@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
 import java.util.TreeMap
 import kotlin.reflect.*
@@ -106,14 +107,17 @@ private data class PropsPack(
             val nameToIndex = mutableMapOf<String, Int>()
             val indexToSerializer = mutableMapOf<Int, KSerializer<Any?>>()
             val recursionNeeded = mutableSetOf<Int>()
-
+            // make a mutable list of descriptors since we can't create our own ClassSerialDescriptorBuilder instance
+            val descriptors = mutableListOf<Triple<String, SerialDescriptor, List<Annotation>>>()
+            var serialIndex = 0
             for (prop in kClass.memberProperties) {
                 val propName = prop.name
                 // the kx-serialization compiler plugin makes sure that all prop serial names per kClass are unique
                 val propSerialName = prop.findAnnotation<SerialName>()?.value ?: propName
+                // use class serial descriptor to query serializability
                 @OptIn(ExperimentalSerializationApi::class)
-                val serialIndex = sType.descriptor.getElementIndex(propSerialName)
-                if (serialIndex == CompositeDecoder.UNKNOWN_NAME) {
+                val sTypeSerialIndex = sType.descriptor.getElementIndex(propSerialName)
+                if (sTypeSerialIndex == CompositeDecoder.UNKNOWN_NAME) {
                     if (propName in copyAccessiblePropertyNames) {
                         warnNonSerializableParameterInCopyMethod(kClass, propName)
                     }
@@ -148,9 +152,25 @@ private data class PropsPack(
                     elementSerializer(
                         prop, underlyingType, isDataclass, isNullableDataclass
                     ).cast<Any?>()
+                @OptIn(ExperimentalSerializationApi::class)
+                descriptors.add(
+                    Triple(
+                        propSerialName, sType.descriptor.getElementDescriptor(sTypeSerialIndex), prop.annotations
+                    )
+                )
+                ++serialIndex
             }
 
-            return PropsPack(sType.descriptor, indexToProperty, nameToIndex, indexToSerializer, recursionNeeded)
+            val proxyDescriptor = buildClassSerialDescriptor("ProxyMap<${kClass.className}>") {
+                for ((name, descriptor, annotations) in descriptors)
+                    element(name, descriptor, annotations, isOptional = true)
+            }
+
+            return PropsPack(
+                proxyDescriptor, kClass,
+                indexToProperty, nameToIndex, indexToSerializer,
+                recursionNeeded
+            )
         }
     }
 }
@@ -228,12 +248,9 @@ private fun deserializeProxyMap(propsP: PropsPack, decoder: Decoder): Map<String
             while (true) {
                 when (val index = decodeElementIndex(descriptor)) {
                     CompositeDecoder.DECODE_DONE -> break
-                    /* If CompositeDecoder.decodeElementIndex() never returns UNKNOWN_NAME, this case can be removed
-                     * entirely instead of just being commented out.
-                     */
-                    // CompositeDecoder.UNKNOWN_NAME -> continue
                     else -> {
-                        val deserialized = decoder.decodeSerializableValue(propsSerializers[index]!!)
+                        val serializer = checkNotNull(propsSerializers[index])
+                        val deserialized = decoder.decodeSerializableValue(serializer)
                         put(propsByIndex[index]!!.name, deserialized)
                     }
                 }
@@ -248,7 +265,6 @@ private val PROPS_PACK_CACHE = ConcurrentHashMap<SerialType, PropsPack>()
  * Provides a serializer to encode/decode a Map<String, Any?> as if it were a @Serializable (data) class C.
  */
 class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<ProxyMap<T>> {
-    override val descriptor = classSerializer.descriptor
     // use reflection to find the run-time type of T
     // TODO: is this cacheable? Is the KSerializer a usable caching key or do we need something else?
     private val type = (classSerializer::class.memberFunctions.find { it.name == "deserialize" }?.returnType!!
@@ -259,6 +275,7 @@ class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<P
         }
     private val sType = SerialType(type, classSerializer.descriptor)
     private val propsP = PROPS_PACK_CACHE.getOrPut(sType) { PropsPack.fromSerialType(sType) }
+    override val descriptor = propsP.descriptor
 
     val serializableMemberPropertyCount = propsP.propsByIndex.size
     override fun deserialize(decoder: Decoder): ProxyMap<T> =

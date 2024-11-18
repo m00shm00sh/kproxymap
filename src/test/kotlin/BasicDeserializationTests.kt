@@ -50,6 +50,22 @@ class BasicDeserializationTests {
             },
             "with ignoring")
     }
+    @Test
+    fun `handle extra key (prop declared in body)`() {
+        val json = JsonExpr(PropVal(ClassWithBodyDeclaredProperty::prop2, "test"))
+        assertThrows(
+            SerializationException::class.java,
+            { deserializeToMap<ClassWithBodyDeclaredProperty>(json) },
+            "without ignoring")
+        assertDoesNotThrow(
+            {
+                val map = deserializeToMap<ClassWithBodyDeclaredProperty>(json,
+                    SpecialArgs( builder = { ignoreUnknownKeys = true })
+                )
+                assertTrue(map!!.isEmpty())
+            },
+            "with ignoring")
+    }
 
     @Test
     fun `handle nullable property`() {
