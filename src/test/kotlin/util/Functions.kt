@@ -217,7 +217,8 @@ internal inline fun <reified T: Any> serializeMapToString(
 ): String {
 
     val json = Json(builderAction = specialArgs.builder)
-    val pMap = map?.let { ProxyMap<T>(it) }
+    // this test fixture is for serializing, not lensing; kClass can be null here
+    val pMap = map?.let { ProxyMap<T>(kClass = null, it) }
     if (!specialArgs.expectNullable)
         requireNotNull(pMap) { "map is null "}
     return specialArgs.serializer
