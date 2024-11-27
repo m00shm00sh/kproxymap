@@ -1,6 +1,7 @@
 package com.moshy.util
 
 import com.moshy.ProxyMap
+import com.moshy.errorStream
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -11,6 +12,8 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.function.Executable
+import java.io.PrintStream
+import kotlin.reflect.KClass
 
 internal val Collection<*>.homogenousType
     get() = if (isEmpty()) null else first()?.let { firstV ->
@@ -236,4 +239,19 @@ internal inline fun <reified T: Any> serializeMapToString(
             true -> json.encodeToString<ProxyMap<T>?>(pMap)
             false -> json.encodeToString(pMap!!)
         }
+}
+internal inline fun interceptErrorStreamTest(block: ()->Unit) {
+    var didCallPrintln = false
+    val streamInterceptor = object : PrintStream(System.err) {
+        override fun println(x: String?) {
+            didCallPrintln = true
+        }
+        override fun println(x: Any?) {
+            didCallPrintln = true
+        }
+    }
+    errorStream = streamInterceptor
+    block()
+    assertTrue(didCallPrintln)
+    errorStream = System.err
 }

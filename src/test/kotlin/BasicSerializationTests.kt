@@ -4,7 +4,6 @@ import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.io.PrintStream
 
 /**
  * Define a "basic" test as one that tests non-recursive cases, where a recursive case is a property D1.P of type D2,
@@ -95,37 +94,20 @@ class BasicSerializationTests {
 
     @Test
     fun `warn when using data class with body-declared serializable property`() {
-        var didCallPrintln = false
-        val streamInterceptor = object : PrintStream(System.err) {
-            override fun println(x: String?) {
-                didCallPrintln = true
-            }
-            override fun println(x: Any?) {
-                didCallPrintln = true
-            }
+        interceptErrorStreamTest {
+            serializeMapToString<ClassWithBodyDeclaredProperty>(emptyMap())
         }
-        errorStream = streamInterceptor
-        serializeMapToString<ClassWithBodyDeclaredProperty>(emptyMap())
-        assertTrue(didCallPrintln)
-        errorStream = System.err
     }
 
     @Test
     fun `verify non-serializable elements aren't processed and emit warning`() {
-        var didCallPrintln = false
-        val streamInterceptor = object : PrintStream(System.err) {
-            override fun println(x: String?) {
-                didCallPrintln = true
-            }
-            override fun println(x: Any?) {
-                didCallPrintln = true
-            }
+        interceptErrorStreamTest {
+            val kSerializer =
+                ProxyMapSerializer(ClassWithTransientProperty.serializer())
+            assertTrue(
+                kSerializer.serializableMemberPropertyCount == ClassWithTransientProperty.serializableMemberCount
+            )
         }
-        errorStream = streamInterceptor
-        val kSerializer = ProxyMapSerializer(ClassWithTransientProperty.serializer())
-        assertTrue(kSerializer.serializableMemberPropertyCount == ClassWithTransientProperty.serializableMemberCount)
-        assertTrue(didCallPrintln)
-        errorStream = System.err
     }
 
     @Test
