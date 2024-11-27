@@ -75,7 +75,6 @@ private fun warnIgnoredMapKeyDuringSerialization(keyName: String) {
 private const val KT_JVM_ALL_PARAMS_OPTIONAL_ARG_COUNT_LIMIT = 245
 private data class PropsPack(
     val descriptor: SerialDescriptor,
-    val kClass: KClass<*>,
     val propsByIndex: List<KProperty1<*, *>>,
     val propIndicesByName: Map<String, Int>,
     val propsSerializers: List<KSerializer<Any?>>,
@@ -84,6 +83,9 @@ private data class PropsPack(
     companion object {
         fun fromSerialType(sType: SerialType): PropsPack {
             val kClass = sType.type.kClass
+            val isGeneric = sType.type.arguments.isNotEmpty()
+            if (isGeneric)
+                throw IllegalArgumentException("class ${sType.type.kClass.className} is generic; support is missing")
             /* Non-private var properties declared in the data class body are serializable but are not available as
              * parameters to copy. This is a problem because our goal is to use copy() for lensed updates instead of
              * invoking the constructor to set the body-declared var's (which is what the underlying deserializer does).
@@ -154,7 +156,7 @@ private data class PropsPack(
             }
 
             return PropsPack(
-                proxyDescriptor, kClass,
+                proxyDescriptor,
                 indexToProperty, nameToIndex, indexToSerializer,
                 recursionNeeded
             )

@@ -107,4 +107,14 @@ class BasicDeserializationTests {
         val json = JsonExpr(p1)
         testDeserialization<ClassWithSerialNameProperty>(json, MapCheck(p2, shouldBeMissing = true))
     }
+
+    @Test
+    fun `reject generics`() {
+        val p1 = PropVal( Box<Int>::elem, 5)
+        val json = JsonExpr(p1)
+        assertThrows(IllegalArgumentException::class.java) {
+            testDeserialization<Box<Int>>(json, MapCheck(p1))
+        }
+    }
+
 }

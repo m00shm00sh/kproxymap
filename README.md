@@ -34,3 +34,4 @@ Then `asMap` can be used with the `propMapOf` construction to update instances j
    cost *of* doing the querying at run-time.
 2. kx-serialization `@Polymorphic` and `@Contextual` untested. The author doesn't see these being useful enough
    for lens types to handle issues arising from use of them.
+3. Generics are unsupported. Attempting (de)serialization with them will throw an IllegalArgumentException.

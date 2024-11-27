@@ -127,4 +127,13 @@ class BasicSerializationTests {
         assertTrue(didCallPrintln)
         errorStream = System.err
     }
+
+    @Test
+    fun `reject generics`() {
+        val p1 = PropVal( Box<Int>::elem, 5)
+        val m1 = listOf(p1).toMap()
+        assertThrows(IllegalArgumentException::class.java) {
+            serializeMapToString<Box<Int>>(m1)
+        }
+    }
 }

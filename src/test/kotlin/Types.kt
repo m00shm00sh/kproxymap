@@ -69,6 +69,11 @@ data class ClassWithBodyDeclaredProperty(
 }
 
 @Serializable
+data class Box<T>(
+    val elem: T
+)
+
+@Serializable
 data class ClassWithTransientProperty(
     val prop1: Int,
     @Transient val prop2: String = prop1.toString()
