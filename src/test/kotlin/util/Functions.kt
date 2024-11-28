@@ -57,6 +57,7 @@ data class PropVal<T>(
                     is List<*> -> {
                         val dType = v.homogenousType
                         if (dType == PropVal::class)
+                            @Suppress("UNCHECKED_CAST")
                             (v as List<PropVal<*>>).toMap()
                         else
                             v
@@ -102,33 +103,33 @@ fun <K : Any, V> Map<K, *>.getByKeySequence(keys: List<K>, keyIndex: Int = 0): V
  * @throws NoSuchElementException if any key in the sequence is missing or invalid
  * @throws AssertionError if the value doesn't match
  */
-fun <V> checkMap(map: Map<String, Any?>, propNames: List<String>, expectedPropVal: V) {
-    val actualPropVal = map.getByKeySequence<String, V>(propNames)
+fun <PropType> checkMap(map: Map<String, Any?>, propNames: List<String>, expectedPropVal: PropType) {
+    val actualPropVal = map.getByKeySequence<String, PropType>(propNames)
     assertEquals(expectedPropVal, actualPropVal)
 }
 
 /** Test fixture for prop validation. */
-data class MapCheck<V>(
+data class MapCheck<PropType>(
     val propNames: List<String>,
-    val expectedPropVal: V,
+    val expectedPropVal: PropType,
     val shouldBeMissing: Boolean = false
 )  {
-    constructor(propName: String, expectedPropVal: V, shouldBeMissing: Boolean = false)
+    constructor(propName: String, expectedPropVal: PropType, shouldBeMissing: Boolean = false)
         : this(listOf(propName), expectedPropVal,shouldBeMissing)
-    constructor(vararg propName: String, expectedPropVal: V, shouldBeMissing: Boolean = false)
+    constructor(vararg propName: String, expectedPropVal: PropType, shouldBeMissing: Boolean = false)
         : this(propName.toList(), expectedPropVal, shouldBeMissing)
     companion object {
         /** Quasi-constructor for PropVal.
          * Walks the [PropVal] to create a list of keys and returns it in [MapCheck] form.
          */
-        operator fun <V> invoke(propVal: PropVal<V>, shouldBeMissing: Boolean = false): MapCheck<V> {
-            var tailV: V
+        operator fun <PropT> invoke(propVal: PropVal<PropT>, shouldBeMissing: Boolean = false): MapCheck<PropT> {
+            var tailV: PropT
             val propNames = buildList {
                 var pv = propVal
                 add(pv.name)
                 @Suppress("UNCHECKED_CAST")
                 while (pv.value is PropVal<*>) {
-                    pv = pv.value as PropVal<V>
+                    pv = pv.value as PropVal<PropT>
                     add(pv.name)
                 }
                 tailV = pv.value
@@ -146,30 +147,36 @@ data class SpecialArgs<T: Any>(
     val expectNullable: Boolean = false,
     val builder: JsonBuilder.()->Unit = {}
 )
+
+/** Create a list of Executables to feed into assertAll for props checking. */
+private fun createPropCheckers(props: List<MapCheck<*>>, map: ProxyMap<*>): List<Executable> {
+    return props.map { (names, expected, shouldBeMissing) ->
+        Executable {
+            when (shouldBeMissing) {
+                false -> checkMap(map, names, expected)
+                true ->
+                    assertThrows(NoSuchElementException::class.java) {
+                        checkMap(map, names, expected)
+                    }
+            }
+        }
+    }
+}
+
 /** Verify the list of [props] is decoded from [jsonStr], with optional [context]. */
-inline fun <reified T: Any> testDeserialization(
+internal inline fun <reified T: Any> testDeserialization(
     jsonStr: String,
     props: List<MapCheck<*>>,
     context: String? = null,
     specialArgs: SpecialArgs<T> = SpecialArgs()
 ) {
     val asMap = requireNotNull(deserializeToMap<T>(jsonStr, specialArgs))
-    val checkFuncs =
-        props.map { (names, expected, shouldBeMissing) ->
-            Executable {
-                when (shouldBeMissing) {
-                    false -> checkMap(asMap, names, expected)
-                    true ->
-                        assertThrows(NoSuchElementException::class.java) {
-                            checkMap(asMap, names, expected)
-                        }
-                }
-            }
-        }
+    val checkFuncs = createPropCheckers(props, asMap)
     assertAll(context, checkFuncs)
 }
+
 /** Verify the list of [props] is decoded from [jsonStr], with optional [context]. */
-inline fun <reified T: Any> testDeserialization(
+internal inline fun <reified T: Any> testDeserialization(
     jsonStr: String,
     vararg props: MapCheck<*>,
     context: String? = null,
@@ -177,7 +184,7 @@ inline fun <reified T: Any> testDeserialization(
 ) =
     testDeserialization<T>(jsonStr, props.toList(), context, specialArgs)
 /** Verify the list of [props] is decoded from [json], with optional [context]. */
-inline fun <reified T: Any> testDeserialization(
+internal inline fun <reified T: Any> testDeserialization(
     json: JsonExpr,
     vararg props: MapCheck<*>,
     context: String? = null,
@@ -218,7 +225,6 @@ internal inline fun <reified T: Any> serializeMapToString(
     map: Map<String, Any?>?,
     specialArgs: SpecialArgs<T> = SpecialArgs()
 ): String {
-
     val json = Json(builderAction = specialArgs.builder)
     // this test fixture is for serializing, not lensing; kClass can be null here
     val pMap = map?.let { ProxyMap<T>(kClass = null, it) }
@@ -240,6 +246,7 @@ internal inline fun <reified T: Any> serializeMapToString(
             false -> json.encodeToString(pMap!!)
         }
 }
+
 internal inline fun interceptErrorStreamTest(block: ()->Unit) {
     var didCallPrintln = false
     val streamInterceptor = object : PrintStream(System.err) {
