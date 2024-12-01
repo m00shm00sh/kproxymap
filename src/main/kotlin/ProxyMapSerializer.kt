@@ -10,59 +10,13 @@ import java.util.TreeMap
 import java.util.concurrent.ConcurrentMap
 import kotlin.reflect.*
 import kotlin.reflect.full.*
-import kotlin.reflect.jvm.jvmName
-
-private val KType.kClass: KClass<*>
-    get() = when (val t = classifier) {
-        is KClass<*> -> t
-        /* This line will only get triggered if we made an internal mistake unpacking types;
-         * thus it should be excluded from coverage analysis.
-         * File a bug report if this gets triggered in normal use!
-         */
-        else -> throw IllegalStateException("Type $t is not a class")
-    }
 
 @Suppress("UNCHECKED_CAST")
-private inline fun <reified T> KSerializer<*>.cast() = this as KSerializer<T>
+private fun <T> KSerializer<*>.cast() = this as KSerializer<T>
 
-/**
- * Serializing type consisting of a type and its associated serializer.
- * This is a distinct object so it can be used as a cache key, given the cost of reflection.
- */
-internal data class SerialType(
-    val type: KType,
-    val descriptor: SerialDescriptor
-) {
-    constructor(type: KType): this(type, serializer(type).descriptor)
-}
-
-/* Internal for testing, to trap System.err.println calls.
- * I suspect race conditions are involved when concurrent test classes are ran.
- * Perhaps this should be thread-local?
- */
-internal var errorStream = System.err
-
-private val KClass<*>.className
-    get() = qualifiedName ?: simpleName ?: jvmName
-
-// FIXME: this should be refactored to slf4j calls and use of an internal errorCallbackTriggered
-private fun warnParameterInaccessibleInCopyMethod(kClass: KClass<*>, propName: String) {
-    val className = kClass.className
-    errorStream.println(
-        "Serializable property $propName of class $className is not accessible from copy method"
-    )
-}
-private fun warnNonSerializableParameterInCopyMethod(kClass: KClass<*>, propName: String) {
-    val className = kClass.className
-    errorStream.println(
-        "Property $propName of class $className is a param of copy method but not serializable"
-    )
-}
-private fun warnIgnoredMapKeyDuringSerialization(keyName: String) {
-    errorStream.println(
-        "Ignored key \"$keyName\" because it is not a viable serialization candidate"
-    )
-}
+/** This is a dummy data class for the serializer to create child ProxyMaps. */
+@Serializable
+private data class Dummy(val data: Nothing)
 
 /**
  * Holds mappings and special objects used by the actual serialization functions.
@@ -73,7 +27,7 @@ private fun warnIgnoredMapKeyDuringSerialization(keyName: String) {
  *       an issue.
  */
 private const val KT_JVM_ALL_PARAMS_OPTIONAL_ARG_COUNT_LIMIT = 245
-private data class PropsPack(
+internal class PropsPack private constructor(
     val descriptor: SerialDescriptor,
     val propsByIndex: List<KProperty1<*, *>>,
     val propIndicesByName: Map<String, Int>,
@@ -86,6 +40,9 @@ private data class PropsPack(
             val isGeneric = sType.type.arguments.isNotEmpty()
             if (isGeneric)
                 throw IllegalArgumentException("class ${sType.type.kClass.className} is generic; support is missing")
+            require(kClass.isData) {
+                "class ${kClass.className} is not a data class"
+            }
             /* Non-private var properties declared in the data class body are serializable but are not available as
              * parameters to copy. This is a problem because our goal is to use copy() for lensed updates instead of
              * invoking the constructor to set the body-declared var's (which is what the underlying deserializer does).
@@ -214,7 +171,7 @@ private fun serializeProxyMap(propsP: PropsPack, encoder: Encoder, value: Map<St
                 elementValue == null -> null
                 propsP.recurseAtIndex[serialIndex] ->
                     @Suppress("UNCHECKED_CAST")
-                    ProxyMap<Any>(kClass = null, elementValue as Map<String, Any?>)
+                    ProxyMap<Dummy>(Dummy::class, elementValue as Map<String, Any?>)
                 else -> elementValue
             }
             encodeSerializableElement(descriptor, serialIndex, propsSerializers[serialIndex], elem)
@@ -249,8 +206,8 @@ private fun deserializeProxyMap(propsP: PropsPack, decoder: Decoder): Map<String
     }
 }
 
-private val PROPS_PACK_CACHE = ConcurrentHashMap<SerialType, PropsPack>()
-private fun ConcurrentMap<SerialType, PropsPack>.getOrPutEntry(sType: SerialType) =
+internal val PROPS_PACK_CACHE = ConcurrentHashMap<SerialType, PropsPack>()
+internal fun ConcurrentMap<SerialType, PropsPack>.getOrPutEntry(sType: SerialType) =
     getOrPut(sType) { PropsPack.fromSerialType(sType) }
 
 /**
@@ -274,35 +231,4 @@ class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<P
         ProxyMap(type.kClass, deserializeProxyMap(propsP, decoder))
     override fun serialize(encoder: Encoder, value: ProxyMap<T>) =
         serializeProxyMap(propsP, encoder, value)
-}
-
-internal fun serializablePropertyNamesForType(sType: SerialType): Set<String> =
-    PROPS_PACK_CACHE.getOrPutEntry(sType).propIndicesByName.keys
-
-/** Tag type for (de)serialization as update map for data class [T]. Immutable.
- */
-@Serializable(with = ProxyMapSerializer::class)
-class ProxyMap<T: Any>
-// The ProxyMap with zero objects. `kClass == null` is only valid in serialization contexts.
-internal constructor (private val kClass: KClass<*>?): Map<String, Any?>
-{
-    private val map = HashMap<String, Any?>()
-    internal constructor(kClass: KClass<*>?, m: Map<String, Any?>): this(kClass) {
-        map.putAll(m)
-    }
-
-    // Implement read-only Map interface.
-    override val entries: Set<Map.Entry<String, Any?>>
-        get() = map.entries
-    override val keys: Set<String>
-        get() = map.keys
-    override val size: Int
-        get() = map.size
-    override val values: Collection<Any?>
-        get() = map.values
-    override fun isEmpty() = map.isEmpty()
-    override fun get(key: String) = map[key]
-    override fun containsValue(value: Any?) = map.containsValue(value)
-    override fun containsKey(key: String) = map.containsKey(key)
-
 }

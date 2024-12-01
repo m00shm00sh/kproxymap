@@ -227,7 +227,7 @@ internal inline fun <reified T: Any> serializeMapToString(
 ): String {
     val json = Json(builderAction = specialArgs.builder)
     // this test fixture is for serializing, not lensing; kClass can be null here
-    val pMap = map?.let { ProxyMap<T>(kClass = null, it) }
+    val pMap = map?.let { ProxyMap<T>(kClass = T::class, it) }
     if (!specialArgs.expectNullable)
         requireNotNull(pMap) { "map is null "}
     return specialArgs.serializer
@@ -262,3 +262,118 @@ internal inline fun interceptErrorStreamTest(block: ()->Unit) {
     assertTrue(didCallPrintln)
     errorStream = System.err
 }
+
+private typealias FailureCallback = (List<String>, Any?, Any?, String) -> Nothing // shall throw
+private fun doCallUnequal(
+    a: Any?, b: Any?,
+    reverseOrder: Boolean, keyChain: List<String>,
+    lazyContextMessage: () -> Any,
+    onUnequal: FailureCallback
+): Nothing {
+    val context = lazyContextMessage().toString()
+    if (reverseOrder)
+        onUnequal(keyChain, b, a, context)
+    else
+        onUnequal(keyChain, a, b, context)
+}
+
+/** Recursive equality checker. This is necessary because equals() with non-equal types is problematic.
+ *
+ * NOTE: TestNG has `fun <E> assertEquals(a: Set<E>, b: Set<E>)`. It would still be an incorrect match because we need
+ *       to recurse to compare .entries() correctly.
+ */
+/* This is not a method of ProxyMapSerializerKt.ProxyMap<*> because we need to mark *which* value failed
+ * in the exception. Parsing toString() output to compare which value failed would introduce unnecessary
+ * complexity, especially when we don't care for key *order*.
+ */
+private fun ProxyMap<*>.equalityChecker(
+    /* $receiver = pmapA, */
+    mapB: Map<String, Any?>,
+    reverseOrder: Boolean = false,
+    keyChain: List<String> = listOf(),
+    lazyMessage: () -> Any,
+    onUnequal: FailureCallback? = null
+): Boolean {
+    val seen = mutableSetOf<String>()
+    for ((key, value) in entries) {
+        val mapValue = mapB[key]
+        val mapValueExists = mapValue != null || key in mapB
+        val contextKey = keyChain + key
+        if (value == null && !mapValueExists) {
+            onUnequal?.let {
+                doCallUnequal(a = null, b = "<MISSING>", reverseOrder, contextKey, lazyMessage, onUnequal)
+            }
+            return false
+        }
+        /* Combining these two expressions into ((a !is ProxyMap && a != b) || (a != Map || !a.eq(b)) negatively
+         * affects readability as calling eq needs an explicit cast so leave the copy-pasted failure checker
+         * invocations alone.
+         */
+        if (value !is ProxyMap<*>) {
+            if (value != mapValue) {
+                onUnequal?.let {
+                    doCallUnequal(a = value, b = mapValue, reverseOrder, contextKey, lazyMessage, onUnequal)
+                }
+                return false
+            }
+        } else {
+            if (mapValue !is Map<*, *> ||
+                !value.equalityChecker(
+                    @Suppress("UNCHECKED_CAST")
+                    (mapValue as Map<String, Any?>), reverseOrder, contextKey,
+                    lazyMessage, onUnequal
+                )
+            ) {
+                onUnequal?.let {
+                    doCallUnequal(a = value, b = mapValue, reverseOrder, contextKey, lazyMessage, onUnequal)
+                }
+                return false
+            }
+        }
+        seen += key
+    }
+    val missingKeysLHS = mapB.keys - seen
+    missingKeysLHS.firstOrNull()?.let {
+        onUnequal?.let { _ ->
+            doCallUnequal(a = "<MISSING>", b = mapB[it], reverseOrder, keyChain + it, lazyMessage, onUnequal)
+        }
+        return false
+    }
+    return true
+}
+
+// Kotlinized version of Junit 5 failure formatter
+private fun Any?.toQualifiedString(): String {
+    val kClass = this?.let { this::class }
+    val hash = hashCode()
+    val message = if (this !is KClass<*>) toString() else ""
+    return "<${kClass.toString()}@$hash>" + message
+}
+private fun failUnequal(context: List<String>, a: Any?, b: Any?, message: String): Nothing {
+    val keyChain = context.joinToString(separator = ".")
+    val prefixMessage = if (message.isNotEmpty()) "$message ==> " else ""
+    val reason = "for key sequence $keyChain: got ${a.toQualifiedString()} but expected ${b.toQualifiedString()}"
+    throw AssertionError(prefixMessage + reason)
+}
+
+/** Overload of Junit 5 assertEquals to correctly compare (expected: [Map], actual: [ProxyMap]). */
+fun assertEquals(expectedMap: Map<String, Any?>, actualProxy: ProxyMap<*>, lazyMessage: () -> Any) =
+    actualProxy.equalityChecker(
+        expectedMap, reverseOrder = true, lazyMessage = lazyMessage,
+        onUnequal = ::failUnequal
+    )
+
+/** Overload of Junit 5 assertEquals to correctly compare (expected: [Map], actual: [ProxyMap]). */
+fun assertEquals(expectedMap: Map<String, Any?>, actualProxy: ProxyMap<*>, message: String = "") {
+    assertEquals(expectedMap, actualProxy) { message }
+}
+/** Overload of Junit 5 assertEquals to correctly compare (expected: [ProxyMap], actual: [Map]). */
+fun assertEquals(expectedProxy: ProxyMap<*>, actualMap: Map<String, Any?>, lazyMessage: () -> Any) =
+    expectedProxy.equalityChecker(
+        actualMap, reverseOrder = false, lazyMessage = lazyMessage,
+        onUnequal = ::failUnequal
+    )
+
+/** Overload of Junit 5 assertEquals to correctly compare (expected: [ProxyMap], actual: [Map]). */
+fun assertEquals(expectedProxy: ProxyMap<*>, actualMap: Map<String, Any?>, message: String = "") =
+    assertEquals(expectedProxy, actualMap) { message }

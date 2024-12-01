@@ -14,6 +14,12 @@ data class RegularClass(
 )
 
 @Serializable
+data class RegularClass2(
+    val prop1: String,
+    val prop2: Int
+)
+
+@Serializable
 data class ClassWithPropertySerializer(
     @Serializable(with = CustomPropertySerializer::class) val prop1: Int,
     val prop2: List<Double> = listOf(1.0)
@@ -83,3 +89,8 @@ data class ClassWithTransientProperty(
             get() = 1
     }
 }
+
+@Serializable
+data class ClassWithPMProperty(
+    val pm: ProxyMap<RegularClass>
+)

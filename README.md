@@ -15,18 +15,20 @@ What if we want to use [kotinx.serialization](https://github.com/Kotlin/kotlinx.
 a property map for `class C`? The approach of `@Serializable Map<String, Any?>` is obviously not going to work because
 `Any?` is not a serializable type so the collection serializer is inapplicable. What if we could use a proxy
 serializer that replays the (de)serialization for `class C` to build a property map so that for object member `a` it
-uses the serialization for `C.a`? This is what this library accomplishes.
+uses the serialization for `C.a`? This is what this library accomplishes. In the process, the proxy map has been
+expanded into a fully featured lensing map so that it can update objects itself but also create the updater transformer.
 
 ## Usage
 We produce a class `ProxyMap<T>`, which is serialized by `ProxyMapSerializer<T>(KSerializer<T>)`,
-that can be used for (de)serializing from a string or stream along the orm of
+that can be used for (de)serializing from a string or stream along the form of
 ```kotlin
 @Serializable
 data class C// (...)
+val original = C(...)
 val jsonStr = getJson()
-val asMap = Json.decodeFromString<ProxyMap<C>>(jsonStr)
+val lensMap = Json.decodeFromString<ProxyMap<C>>(jsonStr)
+val new = original + lensMap
 ```
-Then `asMap` can be used with the `propMapOf` construction to update instances just like in the first example.
 
 ## Limitations
 1. Reflection is necessary to query the serializable members and create the serialization index mappings.
@@ -35,3 +37,5 @@ Then `asMap` can be used with the `propMapOf` construction to update instances j
 2. kx-serialization `@Polymorphic` and `@Contextual` untested. The author doesn't see these being useful enough
    for lens types to handle issues arising from use of them.
 3. Generics are unsupported. Attempting (de)serialization with them will throw an IllegalArgumentException.
+4. ProxyMap cannot be used as a property of a data class which is itself lensed with a ProxyMap. This is because
+   lensing a lens is nonsense so we guard against that.
