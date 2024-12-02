@@ -2,10 +2,8 @@ package com.moshy
 
 import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
-import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.io.PrintStream
 
 class RecursiveSerializationTests {
     @Test

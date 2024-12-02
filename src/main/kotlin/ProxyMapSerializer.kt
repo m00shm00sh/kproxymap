@@ -3,8 +3,7 @@ package com.moshy
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.nullable
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentMap
@@ -94,8 +93,7 @@ internal class PropsPack private constructor(
                 indexToProperty += prop
                 nameToIndex[prop.name] = serialIndex
                 recursionNeeded += isDataclass
-                indexToSerializer +=
-                    elementSerializer(prop, underlyingType, isDataclass, isNullableDataclass).cast<Any?>()
+                indexToSerializer += elementSerializer(prop, underlyingType, isDataclass, isNullableDataclass).cast()
                 @OptIn(ExperimentalSerializationApi::class)
                 descriptors += Triple(
                         propSerialName, sType.descriptor.getElementDescriptor(sTypeSerialIndex), prop.annotations
@@ -136,7 +134,7 @@ private fun elementSerializer(
 
     if (isDataclass) {
         // unwrap the nullability then rewrap it if necessary
-        val dataclassDeserializer = ProxyMapSerializer(propActualSerializer.cast<Any>())
+        val dataclassDeserializer = ProxyMapSerializer(propActualSerializer.cast())
         if (isNullableDataclass)
             return dataclassDeserializer.nullable
         return dataclassDeserializer
@@ -216,8 +214,8 @@ internal fun ConcurrentMap<SerialType, PropsPack>.getOrPutEntry(sType: SerialTyp
 class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<ProxyMap<T>> {
     // use reflection to find the run-time type of T
     // TODO: is this cacheable? Is the KSerializer a usable caching key or do we need something else?
-    private val type = (classSerializer::class.memberFunctions.find { it.name == "deserialize" }?.returnType!!
-        ).also {
+    private val type = classSerializer::class.memberFunctions.single { it.name == "deserialize" }.returnType
+        .also {
             require(it.kClass.isData) {
                 "(de)serializer synthesis only supported for data classes"
             }
