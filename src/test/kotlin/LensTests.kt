@@ -3,6 +3,7 @@ package com.moshy
 import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
 class LensTests {
@@ -27,7 +28,7 @@ class LensTests {
     }
     @Test
     fun `fromDataclass reject non-data class`() {
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromDataclass(NonData())
         }
     }
@@ -48,14 +49,14 @@ class LensTests {
     @Test
     fun `fromDataclass reject generic`() {
         val o1 = Box(5)
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromDataclass(o1)
         }
     }
     @Test
     fun `fromDataclass reject class with ProxyMap member`() {
         val pm1 = ProxyMap.fromDataclass(RegularClass("a"))
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromDataclass(ClassWithPMProperty(pm1))
         }
     }
@@ -88,7 +89,7 @@ class LensTests {
     @Test
     fun `fromLensMap reject non-data class type argument`() {
         val map = emptyMap<String, Any?>()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromLensMap<NonData>(map)
         }
     }
@@ -96,7 +97,7 @@ class LensTests {
     fun `fromLensMap reject incompatible value`() {
         val prop: PropVal<*> = PropVal(RegularClass::prop1, 42)
         val inputMap = prop.toList().toMap()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromLensMap<RegularClass>(inputMap)
         }
     }
@@ -108,7 +109,7 @@ class LensTests {
                     ProxyMap.fromLensMap<ClassWithNullableMember>(
                         mapOf(ClassWithNullableMember::prop1.name to 42.0))
             )
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromLensMap<ClassWithDataclassMember>(map)
         }
     }
@@ -116,7 +117,7 @@ class LensTests {
     fun `fromLensMap reject ProxyMap value for non-dataclass member`() {
         val pm1 = ProxyMap.fromDataclass(RegularClass("a"))
         val map = PropVal(ClassWithPMProperty::pm, pm1).toList().toMap()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromLensMap<ClassWithPMProperty>(map)
         }
     }
@@ -124,7 +125,7 @@ class LensTests {
     fun `fromLensMap reject undesired null`() {
         val prop: PropVal<*> = PropVal(RegularClass::prop1, null)
         val inputMap = prop.toList().toMap()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromLensMap<RegularClass>(inputMap)
         }
     }
@@ -175,7 +176,7 @@ class LensTests {
         val map = prop.toList().toMap()
         val proxy = ProxyMap.fromLensMap<RegularClass>(map)
         val o1 = ClassWithNullableMember(42.0)
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             (proxy as ProxyMap<ClassWithNullableMember>).applyToObject(o1)
         }
     }
@@ -210,7 +211,7 @@ class LensTests {
     fun `reject incompatible PM minus PM`() {
         val o1 = RegularClass("a")
         val o2 = RegularClass2("a", 1)
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             ProxyMap.fromDataclass(o1) - ProxyMap.fromDataclass(o2)
         }
     }

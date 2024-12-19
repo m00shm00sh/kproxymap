@@ -3,6 +3,7 @@ package com.moshy
 import com.moshy.util.*
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
 /**
@@ -37,10 +38,9 @@ class BasicDeserializationTests {
     fun `handle extra keys`() {
         val invalidPropName = "q"
         val json = JsonExpr.Obj(invalidPropName to JsonExpr("a"))
-        assertThrows(
-            SerializationException::class.java,
-            { deserializeToMap<RegularClass>(json) },
-            "without ignoring")
+        assertThrows<SerializationException>("without ignoring") {
+            deserializeToMap<RegularClass>(json)
+        }
         assertDoesNotThrow(
             {
                 val map = deserializeToMap<RegularClass>(json,
@@ -53,10 +53,9 @@ class BasicDeserializationTests {
     @Test
     fun `handle extra key (prop declared in body)`() {
         val json = JsonExpr(PropVal(ClassWithBodyDeclaredProperty::prop2, "test"))
-        assertThrows(
-            SerializationException::class.java,
-            { deserializeToMap<ClassWithBodyDeclaredProperty>(json) },
-            "without ignoring")
+        assertThrows<SerializationException>("without ignoring") {
+            deserializeToMap<ClassWithBodyDeclaredProperty>(json)
+        }
         assertDoesNotThrow(
             {
                 val map = deserializeToMap<ClassWithBodyDeclaredProperty>(json,
@@ -95,7 +94,7 @@ class BasicDeserializationTests {
 
     @Test
     fun `reject non-data class`() {
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             testDeserialization<NonData>(JsonExpr(null))
         }
     }
@@ -112,7 +111,7 @@ class BasicDeserializationTests {
     fun `reject generics`() {
         val p1 = PropVal( Box<Int>::elem, 5)
         val json = JsonExpr(p1)
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             testDeserialization<Box<Int>>(json, MapCheck(p1))
         }
     }

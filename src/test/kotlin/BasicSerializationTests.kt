@@ -3,6 +3,7 @@ package com.moshy
 import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
 /**
@@ -77,7 +78,7 @@ class BasicSerializationTests {
 
     @Test
     fun `reject non-data class`() {
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             serializeMapToString<NonData>(emptyMap())
         }
     }
@@ -114,7 +115,7 @@ class BasicSerializationTests {
     fun `reject generics`() {
         val p1 = PropVal( Box<Int>::elem, 5)
         val m1 = listOf(p1).toMap()
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows<IllegalArgumentException> {
             serializeMapToString<Box<Int>>(m1)
         }
     }

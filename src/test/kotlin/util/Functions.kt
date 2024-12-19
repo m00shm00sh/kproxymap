@@ -11,6 +11,7 @@ import kotlinx.serialization.builtins.nullable
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.function.Executable
 import java.io.PrintStream
 import kotlin.reflect.KClass
@@ -155,7 +156,7 @@ private fun createPropCheckers(props: List<MapCheck<*>>, map: ProxyMap<*>): List
             when (shouldBeMissing) {
                 false -> checkMap(map, names, expected)
                 true ->
-                    assertThrows(NoSuchElementException::class.java) {
+                    assertThrows<NoSuchElementException> {
                         checkMap(map, names, expected)
                     }
             }
