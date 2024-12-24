@@ -131,6 +131,26 @@ class LensTests {
     }
 
     @Test
+    fun `test pseudo-constructors`() {
+        assertAll(
+            {
+                val prop = PropVal(RegularClass::prop1, "test")
+                val map = prop.toList().toMap()
+                val proxy = ProxyMap<RegularClass>(map)
+                assertEquals(map, proxy)
+            }, {
+                val obj = RegularClass("abc")
+                val expMap = PropVal(RegularClass::prop1, "abc").toList().toMap()
+                val actualMap = ProxyMap(obj)
+                assertEquals(expMap, actualMap)
+            }, {
+                val pm = ProxyMap<RegularClass>()
+                assertEquals(emptyMap(), pm)
+            }
+        )
+    }
+
+    @Test
     fun `test applyToObject`() {
         val prop = PropVal(RegularClass::prop1, "test")
         val map = prop.toList().toMap()

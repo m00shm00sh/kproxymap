@@ -167,6 +167,17 @@ internal constructor (
         inline fun <reified T_: Any> fromLensMap(data: Map<String, Any?>): ProxyMap<T_> =
             fromLensMap(data, typeOf<T_>()) as ProxyMap<T_>
 
+        /** Pseudo-constructor for data class input.
+         * @see fromDataclass
+         */
+        inline operator fun <reified T_: Any> invoke(data: T_): ProxyMap<T_> =
+            fromDataclass(data)
+        /** Pseudo-constructor for map and <type> input.
+         * @see fromLensMap
+         */
+        inline operator fun <reified T_: Any> invoke(data: Map<String, Any?> = emptyMap()): ProxyMap<T_> =
+            fromLensMap<T_>(data)
+
         private fun checkType(type: KType) {
             val isGeneric = type.arguments.isNotEmpty()
             val kClass = type.kClass
