@@ -33,9 +33,13 @@ internal constructor (
 ): Map<String, Any?> by map {
     private val propsP = PROPS_PACK_CACHE.getOrPutEntry(SerialType(kClass.createType()))
     private val serializableNames = propsP.serializablePropertyNames
+    private val primaryCtor =
+        requireNotNull(kClass.primaryConstructor) { "no primary constructor" }
     // TODO: is this cacheable? Is the KClass a usable caching key or do we need something else?
-    private val copyMethod = kClass.memberFunctions.single { it.name == "copy" }
-    /** Recursive [applyToObject]. Assumes [kClass] != null because it relies on that for all type safety .*/
+    private val copyMethod =
+        requireNotNull(kClass.memberFunctions.singleOrNull() { it.name == "copy" }) { "no copy method" }
+
+    /** Recursive [applyToObject]. Assumes [kClass] != null because it relies on that for all type safety. */
     private fun applyToObjectImpl(data: Any): Any {
         val dataClass = data::class
         require(kClass == dataClass) {
@@ -87,6 +91,76 @@ internal constructor (
     @Suppress("UNCHECKED_CAST")
     fun applyToObject(data: T): T =
         applyToObjectImpl(data) as T
+
+    /** Recursive [createObject]. */
+    private fun createObjectImpl(): Any {
+        val argMap = primaryCtor.parameters.mapNotNull {
+            when {
+                it.kind == KParameter.Kind.VALUE && it.name in serializableNames -> {
+                    val lensVal = this[it.name]
+                    val prop = propsP.propsByIndex[propsP.propIndicesByName[it.name] ?: -1]
+                    // ignore unwanted null
+                    if (lensVal == null) {
+                        if (it.name in this) {
+                            return@mapNotNull it to null
+                        } else
+                            return@mapNotNull null
+                    }
+                    // recurse when the property is a data class having a non-null value
+                    val propType = prop.returnType
+                    val propClass = propType.kClass
+                    val isDataclass = propClass.isData
+                    /* A ProxyMap object makes no sense here if it's not proxying a sub-object or isn't an
+                     * expressly desired ProxyMap.
+                     * Unsure if this condition is even reachable.
+                     */
+                    if (!isDataclass && propClass != ProxyMap::class && lensVal is ProxyMap<*>) {
+                        throw IllegalArgumentException("key ${it.name}: unexpected ProxyMap")
+                    }
+                    val value = when {
+                        isDataclass -> requireNotNull(lensVal as? ProxyMap<*>).createObjectImpl()
+                        else -> lensVal
+                    }
+                    return@mapNotNull it to value
+                }
+                else ->
+                    /* Non-serializable or unsupported KParameter Kind
+                     * This happens when there's a @Transient property in the copy method params.
+                     * This argument is ignored so there's no need to coverage test its handling.
+                     */
+                    null
+            }
+        }.toMap()
+        /* TODO: if this doesn't become reflection-based, another way of throwing a prettier exception
+         *       when there's missing non-optional args will be necessary.
+         */
+        try {
+            return checkNotNull(primaryCtor.callBy(argMap))
+        } catch (ex: IllegalArgumentException) {
+            /* This extractor will need a refactor if
+             * kotlin-reflect:src/kotlin/reflect/jvm/internal/ReflectionObjectRenderer.renderParameter
+             * ever changes in output.
+             */
+            val prefix = "No argument provided for a required parameter: parameter #"
+            val suffix = " of fun `<init"
+            if (ex.message?.startsWith(prefix) == true) {
+                val parameter = ex.message!!.substring(prefix.length)
+                /* This is a bit fragile, but we can't do (\S+) | `([\`]+)` because the parameter renderer
+                 * appends the name without quoting. However, ` and < can never appear in a Kotlin identifier
+                 * so $suffix is well-formed.
+                 */
+                val startIndex = parameter.indexOf(' ') + 1
+                val endIndex = parameter.indexOf(suffix, startIndex)
+                val identifier = parameter.substring(startIndex ..< endIndex)
+                throw IllegalArgumentException("required parameter is missing: $identifier")
+            } else
+                throw ex
+        }
+    }
+    /** Apply the lensing contained in this [ProxyMap] to an object [data] having equal class, recursively. */
+    @Suppress("UNCHECKED_CAST")
+    fun createObject(): T =
+        createObjectImpl() as T
 
     companion object {
         /** Create a ProxyMap from a given object and its applicable type information.

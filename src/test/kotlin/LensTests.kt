@@ -211,6 +211,46 @@ class LensTests {
     }
 
     @Test
+    fun `test createObject`() {
+        val prop = PropVal(RegularClass::prop1, "test")
+        val map = prop.toList().toMap()
+        val proxy = ProxyMap.fromLensMap<RegularClass>(map)
+        val obj = proxy.createObject()
+        assertEquals("test", obj.prop1)
+    }
+    @Test
+    fun `test createObject recursively`() {
+        val map = listOf(
+            PropVal(ClassWithDataclassMember::prop1, 1),
+            PropVal(ClassWithDataclassMember::prop2,
+                PropVal(RegularClass::prop1, "b")
+            )
+        ).toMap()
+        val proxy = ProxyMap.fromLensMap<ClassWithDataclassMember>(map)
+        val obj = proxy.createObject()
+        assertEquals(1, obj.prop1)
+        assertEquals("b", obj.prop2.prop1)
+    }
+    @Test
+    fun `test createObject withOptional`() {
+        val prop = PropVal(WithOptional::p2, 1)
+        val map = prop.toList().toMap()
+        val proxy = ProxyMap.fromLensMap<WithOptional>(map)
+        val obj = proxy.createObject()
+        assertEquals("a", obj.p1)
+    }
+    @Test
+    fun `createObject reject partial object`() {
+        val prop = PropVal(Rejectable::p2, 1)
+        val map = prop.toList().toMap()
+        val proxy = ProxyMap.fromLensMap<Rejectable>(map)
+        val ex = assertThrows<IllegalArgumentException> {
+            proxy.createObject()
+        }
+        assertEquals("required parameter is missing: p1 abc", ex.message)
+    }
+
+    @Test
     fun `test DataClass + ProxyMap = applyToObject`() {
         val o1 = RegularClass2("test", 1)
         val pm = ProxyMap.fromLensMap<RegularClass2>(PropVal(RegularClass2::prop2, 2).toList().toMap())

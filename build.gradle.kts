@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.moshy"
-version = "0.1.1"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -24,6 +24,13 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.dokkaHtml {
+    outputDirectory.set(layout.buildDirectory.dir("documentation/html"))
+}
+tasks.dokkaJavadoc {
+    outputDirectory.set(layout.buildDirectory.dir("documentation/javadoc"))
 }
 
 java {

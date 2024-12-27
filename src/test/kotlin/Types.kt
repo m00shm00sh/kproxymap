@@ -94,3 +94,15 @@ data class ClassWithTransientProperty(
 data class ClassWithPMProperty(
     val pm: ProxyMap<RegularClass>
 )
+
+@Serializable
+data class WithOptional(
+    val p1: String = "a",
+    val p2: Int
+)
+
+@Serializable
+data class Rejectable(
+    val `p1 abc`: String, // use one with spaces
+    val p2: Int
+)
