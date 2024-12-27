@@ -156,7 +156,9 @@ internal constructor (
                             throw IllegalArgumentException("key $key: incompatible ProxyMap: <$propClass>")
                     // do instanceof-based type check; generics (if any) should not be in the serializable name set
                     } else if (value != null && !propClass.isInstance(value)) {
-                        throw IllegalArgumentException("key $key: incompatible class: ${propClass.className}")
+                        throw IllegalArgumentException(
+                            "key $key: expected class: ${propClass.className}; got class: ${value::class.className}"
+                        )
                     }
                     this[key] = value
                 }
