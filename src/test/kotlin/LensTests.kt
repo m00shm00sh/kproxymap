@@ -247,7 +247,7 @@ class LensTests {
         val ex = assertThrows<IllegalArgumentException> {
             proxy.createObject()
         }
-        assertEquals("required parameter is missing: p1 abc", ex.message)
+        assertEquals("1 required parameter(s) missing: p1 abc", ex.message)
     }
 
     @Test

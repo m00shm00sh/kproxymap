@@ -131,33 +131,16 @@ internal constructor (
                     null
             }
         }.toMap()
-        /* TODO: if this doesn't become reflection-based, another way of throwing a prettier exception
-         *       when there's missing non-optional args will be necessary.
-         */
-        try {
-            return checkNotNull(primaryCtor.callBy(argMap))
-        } catch (ex: IllegalArgumentException) {
-            /* This extractor will need a refactor if
-             * kotlin-reflect:src/kotlin/reflect/jvm/internal/ReflectionObjectRenderer.renderParameter
-             * ever changes in output.
-             */
-            val prefix = "No argument provided for a required parameter: parameter #"
-            val suffix = " of fun `<init"
-            if (ex.message?.startsWith(prefix) == true) {
-                val parameter = ex.message!!.substring(prefix.length)
-                /* This is a bit fragile, but we can't do (\S+) | `([\`]+)` because the parameter renderer
-                 * appends the name without quoting. However, ` and < can never appear in a Kotlin identifier
-                 * so $suffix is well-formed.
-                 */
-                val startIndex = parameter.indexOf(' ') + 1
-                val endIndex = parameter.indexOf(suffix, startIndex)
-                val identifier = parameter.substring(startIndex ..< endIndex)
-                throw IllegalArgumentException("required parameter is missing: $identifier")
-            } else
-                throw ex
+        val missing = primaryCtor.parameters.mapNotNull { p -> p.name.takeUnless { p.isOptional } } - this.keys
+        if (missing.isNotEmpty()) {
+            val numMissing = missing.size
+            throw IllegalArgumentException(
+                "$numMissing required parameter(s) missing: ${missing.joinToString(", ")}"
+            )
         }
+        return checkNotNull(primaryCtor.callBy(argMap))
     }
-    /** Apply the lensing contained in this [ProxyMap] to an object [data] having equal class, recursively. */
+    /** Create a new object using the values in this [ProxyMap]. */
     @Suppress("UNCHECKED_CAST")
     fun createObject(): T =
         createObjectImpl() as T
