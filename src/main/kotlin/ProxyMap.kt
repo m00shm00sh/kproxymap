@@ -282,6 +282,12 @@ internal constructor (
         }
         return ProxyMap(kClass, map)
     }
+
+    /** Type checked cast from erased to actual type. */
+    @Suppress("UNCHECKED_CAST")
+    infix fun <U: Any> castTo(clazz: KClass<U>): ProxyMap<U> =
+        if (kClass == clazz) this as ProxyMap<U>
+        else throw ClassCastException("Cannot cast ProxyMap due to incompatible type")
 }
 
 /** Apply [lens] onto a receiver and return the transformed object. */

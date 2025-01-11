@@ -275,4 +275,20 @@ class LensTests {
             ProxyMap.fromDataclass(o1) - ProxyMap.fromDataclass(o2)
         }
     }
+
+    @Test
+    fun `test cast`() {
+        val obj = RegularClass("abc")
+        val map = ProxyMap(obj) as ProxyMap<*>
+        assertAll(
+            {   assertDoesNotThrow {
+                    map castTo RegularClass::class
+                }
+            },
+            {   assertThrows<ClassCastException> {
+                    map castTo RegularClass2::class
+                }
+            }
+        )
+    }
 }
