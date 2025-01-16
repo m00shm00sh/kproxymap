@@ -288,6 +288,22 @@ internal constructor (
     infix fun <U: Any> castTo(clazz: KClass<U>): ProxyMap<U> =
         if (kClass == clazz) this as ProxyMap<U>
         else throw ClassCastException("Cannot cast ProxyMap due to incompatible type")
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ProxyMap<*>) return false
+
+        if (kClass != other.kClass) return false
+        if (map != other.map) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = kClass.hashCode()
+        result = 31 * result + map.hashCode()
+        return result
+    }
 }
 
 /** Apply [lens] onto a receiver and return the transformed object. */

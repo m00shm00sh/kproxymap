@@ -2,6 +2,7 @@ package com.moshy
 
 import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
@@ -290,5 +291,14 @@ class LensTests {
                 }
             }
         )
+    }
+
+    @Test
+    fun `test equality`() {
+        val prop = PropVal(RegularClass::prop1, "test")
+        val map = prop.toList().toMap()
+        val proxy = ProxyMap<RegularClass>(map)
+        val proxy2 = ProxyMap<RegularClass>(map)
+        Assertions.assertEquals(proxy2, proxy)
     }
 }
