@@ -52,7 +52,7 @@ data class PropVal<T>(
                 JsonExpr(it.associate { pv -> pv.asSerialPair })
             }
         }
-        fun List<PropVal<*>>.toMap(): Map<String, Any?> = buildMap {
+        fun List<PropVal<*>>.toMap(): Map<String, Any?> = LinkedHashMap<String, Any?>().apply {
             for (prop in this@toMap) {
                 this[prop.name] = when (val v = prop.value) {
                     is List<*> -> {
