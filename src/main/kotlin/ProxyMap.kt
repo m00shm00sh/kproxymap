@@ -1,6 +1,7 @@
 package com.moshy
 
 import kotlinx.serialization.Serializable
+import java.util.SortedMap
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 
@@ -255,7 +256,20 @@ internal constructor (
         }
     }
 
-    override fun toString() = "ProxyMap<${kClass.className}>" + map.toString()
+    // overload toSortedMap to use property declaration order instead of Comparator<String> natural order
+    // TODO: there is overhead for primaryCtor, copyMethod, propertyNames; is it worth creating another CHM
+    //       to hold those values?
+    fun toSortedMap() =
+        if (map is SortedMap<String, *>) this
+        else ProxyMap(kClass, sortedMap())
+
+    private fun sortedMap() =
+        if (map is SortedMap<String, *>) map
+        else map.toSortedMap { a, b -> propsP.propIndicesByName[a]!! - propsP.propIndicesByName[b]!! }
+
+
+    override fun toString() = "ProxyMap<${kClass.className}>" + sortedMap().toString()
+
 
     /**
      * Get difference between two [ProxyMap]s.

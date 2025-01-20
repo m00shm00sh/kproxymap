@@ -301,4 +301,16 @@ class LensTests {
         val proxy2 = ProxyMap<RegularClass>(map)
         Assertions.assertEquals(proxy2, proxy)
     }
+
+    @Test
+    fun `test toString order`() {
+        val props = listOf(
+            PropVal(RegularClass2::prop1, "s"),
+            PropVal(RegularClass2::prop2, 1)
+        ).toMap()
+        val exp = "ProxyMap<com.moshy.RegularClass2>$props"
+        val map = ProxyMap<RegularClass2>(props)
+        assertEquals(exp, map.toString())
+
+    }
 }
