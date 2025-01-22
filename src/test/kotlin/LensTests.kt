@@ -311,6 +311,26 @@ class LensTests {
         val exp = "ProxyMap<com.moshy.RegularClass2>$props"
         val map = ProxyMap<RegularClass2>(props)
         assertEquals(exp, map.toString())
+   }
 
+    @Test
+    fun `test exception propagation for copy`() {
+        val props = listOf(
+            PropVal(ThrowsExceptionInInitializer::a, -1)
+        ).toMap()
+        val map = ProxyMap<ThrowsExceptionInInitializer>(props)
+        assertThrows<IllegalArgumentException> {
+            map.applyToObject(ThrowsExceptionInInitializer(1))
+        }
+    }
+    @Test
+    fun `test exception propagation for ctor`() {
+        val props = listOf(
+            PropVal(ThrowsExceptionInInitializer::a, -1)
+        ).toMap()
+        val map = ProxyMap<ThrowsExceptionInInitializer>(props)
+        assertThrows<IllegalArgumentException> {
+            map.createObject()
+        }
     }
 }

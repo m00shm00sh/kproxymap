@@ -106,3 +106,12 @@ data class Rejectable(
     val `p1 abc`: String, // use one with spaces
     val p2: Int
 )
+
+@Serializable
+data class ThrowsExceptionInInitializer(
+    val a: Int
+) {
+    init {
+        require(a > 0)
+    }
+}

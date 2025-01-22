@@ -1,6 +1,7 @@
 package com.moshy
 
 import kotlinx.serialization.Serializable
+import java.lang.reflect.InvocationTargetException
 import java.util.SortedMap
 import kotlin.reflect.*
 import kotlin.reflect.full.*
@@ -86,7 +87,7 @@ internal constructor (
                     null
             }
         }.toMap()
-        return checkNotNull(copyMethod.callBy(argMap))
+        return reflectionCallBy(copyMethod, argMap)
     }
     /** Apply the lensing contained in this [ProxyMap] to an object [data] having equal class, recursively. */
     @Suppress("UNCHECKED_CAST")
@@ -139,7 +140,7 @@ internal constructor (
                 "$numMissing required parameter(s) missing: ${missing.joinToString(", ")}"
             )
         }
-        return checkNotNull(primaryCtor.callBy(argMap))
+        return reflectionCallBy(primaryCtor, argMap)
     }
     /** Create a new object using the values in this [ProxyMap]. */
     @Suppress("UNCHECKED_CAST")
@@ -322,3 +323,11 @@ internal constructor (
 
 /** Apply [lens] onto a receiver and return the transformed object. */
 operator fun <T: Any> T.plus(lens: ProxyMap<T>): T = lens.applyToObject(this)
+
+/** Call [f] with [argMap] and propagate any thrown exceptions. */
+private fun reflectionCallBy(f: KFunction<*>, argMap: Map<KParameter, Any?>) =
+    try {
+        checkNotNull(f.callBy(argMap))
+    } catch (e: InvocationTargetException) {
+        throw e.targetException
+    }
