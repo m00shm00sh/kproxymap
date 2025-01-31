@@ -130,6 +130,13 @@ class LensTests {
             ProxyMap.fromLensMap<RegularClass>(inputMap)
         }
     }
+    @Test
+    fun `test fromLensMap variadic`() {
+        val prop = PropVal(RegularClass::prop1, "test")
+        val map = prop.toList().toMap()
+        val proxy = ProxyMap.fromLensMap<RegularClass>("prop1" to "test")
+        assertEquals(map, proxy)
+    }
 
     @Test
     fun `test pseudo-constructors`() {
@@ -138,15 +145,15 @@ class LensTests {
                 val prop = PropVal(RegularClass::prop1, "test")
                 val map = prop.toList().toMap()
                 val proxy = ProxyMap<RegularClass>(map)
-                assertEquals(map, proxy)
+                assertEquals(map, proxy, "fromLensMap")
             }, {
                 val obj = RegularClass("abc")
                 val expMap = PropVal(RegularClass::prop1, "abc").toList().toMap()
                 val actualMap = ProxyMap(obj)
-                assertEquals(expMap, actualMap)
+                assertEquals(expMap, actualMap, "fromDataclass")
             }, {
                 val pm = ProxyMap<RegularClass>()
-                assertEquals(emptyMap(), pm)
+                assertEquals(emptyMap(), pm, "fromLensMap(empty)")
             }
         )
     }

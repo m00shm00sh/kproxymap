@@ -16,9 +16,10 @@ private val PropsPack.serializablePropertyNames: Set<String>
  * 1. [fromDataclass]`(obj: T)`
  * 2. [fromDataclass]`(obj, kType)`
  * 3. [fromLensMap]`<T>(map: Map<String, Any?>)`
- * 4. [fromLensMap]`<T>(map, kType)`
- * 5. `serializerEngine.decodeFromXxx<ProxyMap<T>>(message)` (e.g. `Json.decodeFromString`)
- * 6. `pm1 - pm2`, where `pm1` and `pm2` are both [ProxyMap]`<T>` (this form is useful for creating lenses)
+ * 4. [fromLensMap]`<T>(vararg items: Pair<String, Any?>)`
+ * 5. [fromLensMap]`<T>(map, kType)`
+ * 6. `serializerEngine.decodeFromXxx<ProxyMap<T>>(message)` (e.g. `Json.decodeFromString`)
+ * 7. `pm1 - pm2`, where `pm1` and `pm2` are both [ProxyMap]`<T>` (this form is useful for creating lenses)
  *
  * Applying the lensing onto an object is done by calling [applyToObject] and supplying an object to return an
  * updated copy of. This can be done out of the box with [ProxyMap.plus].
@@ -227,6 +228,10 @@ internal constructor (
         @Suppress("UNCHECKED_CAST")
         inline fun <reified T_: Any> fromLensMap(data: Map<String, Any?>): ProxyMap<T_> =
             fromLensMap(data, typeOf<T_>()) as ProxyMap<T_>
+        /** Create a [ProxyMap] given an update lens represented as map [items] and type [T_]. */
+        @Suppress("UNCHECKED_CAST")
+        inline fun <reified T_: Any> fromLensMap(vararg items: Pair<String, Any?>): ProxyMap<T_> =
+            fromLensMap(mapOf(*items), typeOf<T_>()) as ProxyMap<T_>
 
         /** Pseudo-constructor for data class input.
          * @see fromDataclass
@@ -238,6 +243,11 @@ internal constructor (
          */
         inline operator fun <reified T_: Any> invoke(data: Map<String, Any?> = emptyMap()): ProxyMap<T_> =
             fromLensMap<T_>(data)
+        /** Pseudo-constructor for map items and <type> input.
+         * @see fromLensMap
+         */
+        inline operator fun <reified T_: Any> invoke(vararg items: Pair<String, Any?>): ProxyMap<T_> =
+            fromLensMap<T_>(*items)
 
         private fun checkType(type: KType) {
             val isGeneric = type.arguments.isNotEmpty()
