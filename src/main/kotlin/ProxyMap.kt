@@ -281,6 +281,25 @@ internal constructor (
 
     override fun toString() = "ProxyMap<${kClass.className}>" + sortedMap().toString()
 
+    /** Override of [Map]`.plus` to preserve `ProxyMap<T>` type invariants.
+     *
+     * @throws IllegalArgumentException if ProxyMaps aren't compatible
+     */
+    /* Use generic to match arbitrary ProxyMap plus so that Map<String, Any?>.plus(other: Map<String, Any?>)
+     * doesn't get matched as a fallback.
+     */
+    operator fun <U: Any> plus(other: ProxyMap<U>): ProxyMap<T> {
+        // TODO: this is excessively strict; can we relax this constraint so that one side can be
+        //       a subset of the other?
+        require(kClass == other.kClass) {
+            "incompatible KClass: <${kClass.className}> and <${other.kClass.className}>"
+        }
+        // Kotlin's stdlib converts this to HashMap($receiver).apply { putAll(other) },
+        // which reduces to HashMap().apply { putAll($receiver); putAll(other) };
+        // presumably this is faster than buildMap { putAll($receiver); putAll(other) }
+        val map = map + other.map
+        return ProxyMap(kClass, map)
+    }
 
     /**
      * Get difference between two [ProxyMap]s.

@@ -268,6 +268,27 @@ class LensTests {
     }
 
     @Test
+    fun `test PM plus PM = lens`() {
+        val o1 = RegularClass2("test", 1)
+        val o2 = RegularClass2("test", 2)
+        val pmPlus = listOf(o1, o2).map { ProxyMap.fromDataclass(it) }.reduce { a, b -> a + b }
+        val lensMapExpected =
+            listOf(
+                PropVal(RegularClass2::prop1, "test"),
+                PropVal(RegularClass2::prop2, 2)
+            ).toMap()
+        assertEquals(lensMapExpected, pmPlus)
+    }
+    @Test
+    fun `reject incompatible PM plus PM`() {
+        val o1 = RegularClass("a")
+        val o2 = RegularClass2("a", 1)
+        assertThrows<IllegalArgumentException> {
+            ProxyMap.fromDataclass(o1) + ProxyMap.fromDataclass(o2)
+        }
+    }
+
+    @Test
     fun `test PM minus PM = lens`() {
         val o1 = RegularClass2("test", 1)
         val o2 = RegularClass2("test", 2)
