@@ -8,13 +8,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonBuilder
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.builtins.nullable
+import org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.function.Executable
 import java.io.PrintStream
-import kotlin.reflect.KClass
 
 internal val Collection<*>.homogenousType
     get() = if (isEmpty()) null else first()?.let { firstV ->
@@ -343,19 +343,27 @@ private fun ProxyMap<*>.equalityChecker(
     return true
 }
 
-// Kotlinized version of Junit 5 failure formatter
-private fun Any?.toQualifiedString(): String {
-    val kClass = this?.let { this::class }
-    val hash = hashCode()
-    val message = if (this !is KClass<*>) toString() else ""
-    return "<${kClass.toString()}@$hash>" + message
-}
-private fun failUnequal(context: List<String>, a: Any?, b: Any?, message: String): Nothing {
-    val keyChain = context.joinToString(separator = ".")
-    val prefixMessage = if (message.isNotEmpty()) "$message ==> " else ""
-    val reason = "for key sequence $keyChain: got ${a.toQualifiedString()} but expected ${b.toQualifiedString()}"
-    throw AssertionError(prefixMessage + reason)
-}
+private fun failUnequal(context: List<String>, a: Any?, b: Any?, message: String): Nothing =
+    /* Kotlin can't deduce that return type of AssertionFailureBuilder.buildAndThrow() is `Nothing` so
+     * throw the exception ourselves.
+     */
+    throw
+        assertionFailure()
+        .message(
+            buildString {
+                append(message)
+                if (message.isNotEmpty())
+                    append(": ")
+                append("for key sequence ")
+                append(context.joinToString(separator = "."))
+            }
+        )
+        /* This is against the normal junit order of (a=expected, b=actual) but I'm not
+         * refactoring the test suite to correct the order.
+         */
+        .actual(a)
+        .expected(b)
+        .build()
 
 /** Overload of Junit 5 assertEquals to correctly compare (expected: [Map], actual: [ProxyMap]). */
 fun assertEquals(expectedMap: Map<String, Any?>, actualProxy: ProxyMap<*>, lazyMessage: () -> Any) =
