@@ -136,6 +136,46 @@ class LensTests {
         val proxy = ProxyMap.fromLensMap<RegularClass>("prop1" to "test")
         assertEquals(map, proxy)
     }
+    @Test
+    fun `test fromLensMap casefold`() {
+        val map = PropVal(TestCasefold::theProp, "test").toList().toMap()
+        val proxy1 = ProxyMap.fromLensMap<TestCasefold>("theprop" to "test", caseFold = true)
+        val proxy2 = ProxyMap.fromLensMap<TestCasefold>("THEPROP" to "test", caseFold = true)
+        assertEquals(map, proxy1)
+        assertEquals(map, proxy2)
+    }
+    @Test
+    fun `test fromLensMap casefold collision in map`() {
+        val exMsg = assertThrows<IllegalArgumentException> {
+            ProxyMap.fromLensMap<TestCasefold>(
+                "theprop" to "test",
+                "THEPROP" to "test", caseFold = true
+            )
+        }.message ?: ""
+        assertTrue(exMsg.matches(Regex("class [a-zA-Z.]+TestCasefold property THEPROP collides .* theProp")))
+    }
+    @Test
+    fun `test fromLensMap casefold collision in class`() {
+        val exMsg = assertThrows<IllegalArgumentException> {
+            ProxyMap.fromLensMap<TestCasefoldReject>(caseFold = true)
+        }.message ?: ""
+        assertTrue(exMsg.matches(Regex("class [a-zA-Z.]+TestCasefoldReject property theProp collides .* theprop")))
+    }
+    @Test
+    fun `test fromLensMap casefold in map opt-in`() {
+        assertDoesNotThrow {
+            ProxyMap.fromLensMap<TestCasefold>(
+                "theprop" to "test",
+                "THEPROP" to "test"
+            )
+        }
+    }
+    @Test
+    fun `test fromLensMap casefold in class opt-in`() {
+        assertDoesNotThrow {
+            ProxyMap.fromLensMap<TestCasefoldReject>()
+        }
+    }
 
     @Test
     fun `test pseudo-constructors`() {

@@ -115,3 +115,14 @@ data class ThrowsExceptionInInitializer(
         require(a > 0)
     }
 }
+
+@Serializable
+data class TestCasefold(
+    val theProp: String
+)
+
+@Serializable
+data class TestCasefoldReject(
+    val theProp: String,
+    val tHeProp: String
+)

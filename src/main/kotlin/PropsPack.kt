@@ -36,6 +36,7 @@ internal class PropsPack private constructor(
     val descriptor: SerialDescriptor,
     val propsByIndex: List<KProperty1<*, *>>,
     val propIndicesByName: Map<String, Int>,
+    val propNamesLowercase: Map<String, String>,
     val propsSerializers: List<KSerializer<Any?>>,
     val recurseAtIndex: List<Boolean>,
 ) {
@@ -59,6 +60,7 @@ internal class PropsPack private constructor(
 
             val indexToProperty = mutableListOf<KProperty1<*, *>>()
             val nameToIndex = mutableMapOf<String, Int>()
+            val namesCasemap = mutableMapOf<String, String>()
             val indexToSerializer = mutableListOf<KSerializer<Any?>>()
             val recursionNeeded = mutableListOf<Boolean>()
             // make a mutable list of descriptors since we can't create our own ClassSerialDescriptorBuilder instance
@@ -97,6 +99,13 @@ internal class PropsPack private constructor(
                     else
                         propType
                 indexToProperty += prop
+                if (sType.caseFold) {
+                    val nameLower = prop.name.lowercase()
+                    val oldNameMatch = namesCasemap.put(nameLower, prop.name)
+                    require(oldNameMatch == null) {
+                        casefoldNameCollision(kClass, prop.name, nameLower)
+                    }
+                }
                 nameToIndex[prop.name] = serialIndex
                 recursionNeeded += isDataclass
                 indexToSerializer += elementSerializer(prop, underlyingType, isDataclass, isNullableDataclass).cast()
@@ -120,7 +129,10 @@ internal class PropsPack private constructor(
 
             return PropsPack(
                 proxyDescriptor,
-                indexToProperty, nameToIndex, indexToSerializer,
+                indexToProperty,
+                nameToIndex,
+                namesCasemap,
+                indexToSerializer,
                 recursionNeeded
             )
         }

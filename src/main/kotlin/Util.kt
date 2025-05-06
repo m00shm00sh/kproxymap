@@ -20,9 +20,11 @@ internal val KType.kClass: KClass<*>
  */
 internal data class SerialType(
     val type: KType,
-    val descriptor: SerialDescriptor
+    val descriptor: SerialDescriptor,
+    val caseFold: Boolean
 ) {
-    constructor(type: KType): this(type, serializer(type).descriptor)
+    constructor(type: KType, caseFold: Boolean = false)
+        : this(type, serializer(type).descriptor, caseFold)
 }
 
 private const val KCLASS_STRING_PREFIX = "class ".length

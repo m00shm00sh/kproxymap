@@ -16,3 +16,10 @@ internal fun warnNonSerializableParameterInCopyMethod(logger: Logger, kClass: KC
 
 internal fun warnIgnoredMapKeyDuringSerialization(logger: Logger, keyName: String) =
     logger.warn("Ignored key \"{}\" because it is not a viable serialization candidate", keyName)
+
+internal fun casefoldNameCollision(kClass: KClass<*>, propName: String, collisionName: String): Nothing {
+    val className = kClass.className
+    throw IllegalArgumentException(
+        "class $className property $propName collides with casefolded property name $collisionName"
+    )
+}

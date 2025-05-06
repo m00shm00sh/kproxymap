@@ -30,6 +30,16 @@ val lensMap = Json.decodeFromString<ProxyMap<C>>(jsonStr)
 val new = original + lensMap
 ```
 
+Case folding can be enabled with constructions from lens maps:
+```
+@Serializable
+data class C2 (val aA: ..., ...)
+val original = C2(...)
+val myMap = mapOf("aa" to ...)
+val lensMap2 = ProxyMap<C2>(myMap, caseFold = true)
+val new = original + lensMap2
+```
+
 ## Limitations
 1. Reflection is necessary to query the serializable members and create the serialization index mappings.
    This requires the kotlin-reflection library. Caching is used to store the reflective querying but there is still the

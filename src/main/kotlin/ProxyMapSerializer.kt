@@ -84,7 +84,7 @@ class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<P
                 "(de)serializer synthesis only supported for data classes"
             }
         }
-    private val sType = SerialType(type, classSerializer.descriptor)
+    private val sType = SerialType(type, classSerializer.descriptor, false)
     private val propsP = PROPS_PACK_CACHE.getOrPutEntry(sType)
     override val descriptor = propsP.descriptor
 

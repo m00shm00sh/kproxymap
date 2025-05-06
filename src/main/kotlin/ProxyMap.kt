@@ -184,18 +184,36 @@ internal constructor (
 
         /** Create a [ProxyMap] given an update lens represented as a [map] and the applicable type information.
          *  The caller is expected to do an unchecked cast from `ProxyMap<*>` to the appropriate proxied type.
+         *
+         *  Enable case folding with [caseFold] if desired.
          */
-        fun fromLensMap(data: Map<String, Any?>, dataType: KType): ProxyMap<*> {
+        fun fromLensMap(data: Map<String, Any?>, dataType: KType, caseFold: Boolean = false): ProxyMap<*> {
             checkType(dataType)
             val kClass = dataType.kClass
-            val propsP = PROPS_PACK_CACHE.getOrPutEntry(SerialType(dataType))
+            val propsP = PROPS_PACK_CACHE.getOrPutEntry(SerialType(dataType, caseFold))
             val serializableNames = propsP.serializablePropertyNames
             return buildMap {
                 for ((key, value) in data) {
-                    if (key !in serializableNames) {
+                    val key = run {
+                        if (key in serializableNames)
+                            return@run key
+                        if (caseFold) {
+                            val lower = key.lowercase()
+                            val fromLower = propsP.propNamesLowercase[lower]
+                            if (fromLower == null) {
+                                warnIgnoredMapKeyDuringSerialization(logger, key)
+                                return@run null
+                            }
+                            if (this[fromLower] != null)
+                                casefoldNameCollision(kClass, key, fromLower)
+                            return@run fromLower
+                        }
                         warnIgnoredMapKeyDuringSerialization(logger, key)
-                        continue
+                        null
                     }
+                    if (key == null)
+                        continue
+
                     /* Here, it doesn't matter if we get IndexOutOfBoundsException or IllegalStateException;
                      * either means the continue a couple of lines above didn't trigger.
                      */
@@ -227,12 +245,14 @@ internal constructor (
         }
         /** Create a [ProxyMap] given an update lens represented as a [map] and type [T_]. */
         @Suppress("UNCHECKED_CAST")
-        inline fun <reified T_: Any> fromLensMap(data: Map<String, Any?>): ProxyMap<T_> =
-            fromLensMap(data, typeOf<T_>()) as ProxyMap<T_>
+        inline fun <reified T_: Any> fromLensMap(data: Map<String, Any?>, caseFold: Boolean = false)
+        : ProxyMap<T_> =
+            fromLensMap(data, typeOf<T_>(), caseFold) as ProxyMap<T_>
         /** Create a [ProxyMap] given an update lens represented as map [items] and type [T_]. */
         @Suppress("UNCHECKED_CAST")
-        inline fun <reified T_: Any> fromLensMap(vararg items: Pair<String, Any?>): ProxyMap<T_> =
-            fromLensMap(mapOf(*items), typeOf<T_>()) as ProxyMap<T_>
+        inline fun <reified T_: Any> fromLensMap(vararg items: Pair<String, Any?>, caseFold: Boolean = false)
+        : ProxyMap<T_> =
+            fromLensMap(mapOf(*items), typeOf<T_>(), caseFold) as ProxyMap<T_>
 
         /** Pseudo-constructor for data class input.
          * @see fromDataclass
@@ -242,13 +262,15 @@ internal constructor (
         /** Pseudo-constructor for map and <type> input.
          * @see fromLensMap
          */
-        inline operator fun <reified T_: Any> invoke(data: Map<String, Any?> = emptyMap()): ProxyMap<T_> =
-            fromLensMap<T_>(data)
+        inline operator fun <reified T_: Any> invoke(data: Map<String, Any?> = emptyMap(), caseFold: Boolean = false)
+        : ProxyMap<T_> =
+            fromLensMap<T_>(data, caseFold)
         /** Pseudo-constructor for map items and <type> input.
          * @see fromLensMap
          */
-        inline operator fun <reified T_: Any> invoke(vararg items: Pair<String, Any?>): ProxyMap<T_> =
-            fromLensMap<T_>(*items)
+        inline operator fun <reified T_: Any> invoke(vararg items: Pair<String, Any?>, caseFold: Boolean = false)
+        : ProxyMap<T_> =
+            fromLensMap<T_>(*items, caseFold = caseFold)
 
         private fun checkType(type: KType) {
             val isGeneric = type.arguments.isNotEmpty()
