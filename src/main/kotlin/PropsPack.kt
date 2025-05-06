@@ -9,6 +9,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.serializer
+import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import kotlin.reflect.KProperty1
@@ -72,12 +73,12 @@ internal class PropsPack private constructor(
                 val sTypeSerialIndex = sType.descriptor.getElementIndex(propSerialName)
                 if (sTypeSerialIndex == CompositeDecoder.Companion.UNKNOWN_NAME) {
                     if (propName in copyAccessiblePropertyNames) {
-                        warnNonSerializableParameterInCopyMethod(kClass, propName)
+                        warnNonSerializableParameterInCopyMethod(logger, kClass, propName)
                     }
                     continue
                 }
                 if (propName !in copyAccessiblePropertyNames) {
-                    warnParameterInaccessibleInCopyMethod(kClass, propName)
+                    warnParameterInaccessibleInCopyMethod(logger, kClass, propName)
                     continue
                 }
                 val propType = prop.returnType
@@ -101,7 +102,9 @@ internal class PropsPack private constructor(
                 indexToSerializer += elementSerializer(prop, underlyingType, isDataclass, isNullableDataclass).cast()
                 @OptIn(ExperimentalSerializationApi::class)
                 descriptors += Triple(
-                        propSerialName, sType.descriptor.getElementDescriptor(sTypeSerialIndex), prop.annotations
+                    propSerialName,
+                    sType.descriptor.getElementDescriptor(sTypeSerialIndex),
+                    prop.annotations
                 )
                 ++serialIndex
                 check (serialIndex <= KT_JVM_ALL_PARAMS_OPTIONAL_ARG_COUNT_LIMIT) {
@@ -121,6 +124,8 @@ internal class PropsPack private constructor(
                 recursionNeeded
             )
         }
+
+        private val logger by lazy { LoggerFactory.getLogger("ProxyMap.PropsPack") }
     }
 }
 

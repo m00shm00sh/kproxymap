@@ -1,6 +1,7 @@
 package com.moshy
 
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.util.SortedMap
 import kotlin.reflect.*
@@ -170,7 +171,7 @@ internal constructor (
                     if (name in serializableNames)
                         this[name] = value
                     else
-                        warnIgnoredMapKeyDuringSerialization(name)
+                        warnIgnoredMapKeyDuringSerialization(logger, name)
                 }
             }.let { ProxyMap(dataType.kClass, it) }
         }
@@ -192,7 +193,7 @@ internal constructor (
             return buildMap {
                 for ((key, value) in data) {
                     if (key !in serializableNames) {
-                        warnIgnoredMapKeyDuringSerialization(key)
+                        warnIgnoredMapKeyDuringSerialization(logger, key)
                         continue
                     }
                     /* Here, it doesn't matter if we get IndexOutOfBoundsException or IllegalStateException;
@@ -265,6 +266,8 @@ internal constructor (
                 }
             }
         }
+
+        private val logger by lazy { LoggerFactory.getLogger("ProxyMap") }
     }
 
     // overload toSortedMap to use property declaration order instead of Comparator<String> natural order

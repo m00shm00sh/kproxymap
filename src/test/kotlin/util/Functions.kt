@@ -1,7 +1,6 @@
 package com.moshy.util
 
 import com.moshy.ProxyMap
-import com.moshy.errorStream
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -14,7 +13,10 @@ import kotlin.reflect.full.findAnnotation
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.function.Executable
-import java.io.PrintStream
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.AppenderBase
 
 internal val Collection<*>.homogenousType
     get() = if (isEmpty()) null else first()?.let { firstV ->
@@ -248,20 +250,28 @@ internal inline fun <reified T: Any> serializeMapToString(
         }
 }
 
-internal inline fun interceptErrorStreamTest(block: ()->Unit) {
-    var didCallPrintln = false
-    val streamInterceptor = object : PrintStream(System.err) {
-        override fun println(x: String?) {
-            didCallPrintln = true
-        }
-        override fun println(x: Any?) {
-            didCallPrintln = true
-        }
+internal class ListAppender: AppenderBase<ILoggingEvent>() {
+    private val _list = mutableListOf<String>()
+    val list: List<String>
+        get() = _list
+    override fun append(e: ILoggingEvent) {
+        _list.add(e.toString())
     }
-    errorStream = streamInterceptor
-    block()
-    assertTrue(didCallPrintln)
-    errorStream = System.err
+}
+
+internal fun getAppendLog(): List<String> {
+    val root = LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as ch.qos.logback.classic.Logger
+    val list = root.getAppender("list") as ListAppender
+    return list.list
+}
+
+internal inline fun withLogCheck(log: List<String>, crossinline func: () -> Unit) {
+    val n1 = log.size
+    assertDoesNotThrow {
+        func()
+    }
+    val n2 = log.size
+    assertTrue(n2 > n1)
 }
 
 private typealias FailureCallback = (List<String>, Any?, Any?, String) -> Nothing // shall throw

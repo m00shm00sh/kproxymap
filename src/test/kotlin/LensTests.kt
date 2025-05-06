@@ -4,6 +4,7 @@ import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
@@ -41,11 +42,9 @@ class LensTests {
         assertEquals(expMap, actualMap)
     }
     @Test
-    fun `fromDataclass warn non-serializable property`() {
+    fun `fromDataclass warn non-serializable property`() = withLogCheck(logLines) {
         val o1 = ClassWithTransientProperty(42, "a")
-        interceptErrorStreamTest {
-            ProxyMap.fromDataclass(o1)
-        }
+        ProxyMap.fromDataclass(o1)
     }
     @Test
     fun `fromDataclass reject generic`() {
@@ -359,6 +358,16 @@ class LensTests {
         val map = ProxyMap<ThrowsExceptionInInitializer>(props)
         assertThrows<IllegalArgumentException> {
             map.createObject()
+        }
+    }
+
+    private companion object {
+        lateinit var logLines: List<String>
+
+        @BeforeAll
+        @JvmStatic
+        fun init() {
+            logLines = getAppendLog()
         }
     }
 }

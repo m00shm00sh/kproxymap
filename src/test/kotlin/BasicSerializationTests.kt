@@ -3,6 +3,7 @@ package com.moshy
 import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
@@ -93,22 +94,19 @@ class BasicSerializationTests {
         assertEquals(expJson, actualJson)
     }
 
+    // FIXME: determine flip-flop
     @Test
-    fun `warn when using data class with body-declared serializable property`() {
-        interceptErrorStreamTest {
-            serializeMapToString<ClassWithBodyDeclaredProperty>(emptyMap())
-        }
+    fun `warn when using data class with body-declared serializable property`() = withLogCheck(logLines) {
+        serializeMapToString<ClassWithBodyDeclaredProperty>(emptyMap())
     }
 
     @Test
-    fun `verify non-serializable elements aren't processed and emit warning`() {
-        interceptErrorStreamTest {
-            val kSerializer =
+    fun `verify non-serializable elements aren't processed and emit warning`() = withLogCheck(logLines) {
+        val kSerializer =
                 ProxyMapSerializer(ClassWithTransientProperty.serializer())
-            assertTrue(
-                kSerializer.serializableMemberPropertyCount == ClassWithTransientProperty.serializableMemberCount
-            )
-        }
+        assertTrue(
+            kSerializer.serializableMemberPropertyCount == ClassWithTransientProperty.serializableMemberCount
+        )
     }
 
     @Test
@@ -117,6 +115,16 @@ class BasicSerializationTests {
         val m1 = listOf(p1).toMap()
         assertThrows<IllegalArgumentException> {
             serializeMapToString<Box<Int>>(m1)
+        }
+    }
+
+    private companion object {
+        lateinit var logLines: List<String>
+
+        @BeforeAll
+        @JvmStatic
+        fun init() {
+            logLines = getAppendLog()
         }
     }
 }

@@ -2,6 +2,7 @@ package com.moshy
 
 import kotlinx.serialization.*
 import kotlinx.serialization.encoding.*
+import org.slf4j.LoggerFactory
 import java.util.TreeMap
 import kotlin.reflect.full.*
 
@@ -26,7 +27,7 @@ private fun serializeProxyMap(propsP: PropsPack, encoder: Encoder, value: Map<St
         for ((propName, propValue) in value) {
             propsIndices[propName]?.let {
                 this[it] = propValue
-            } ?: warnIgnoredMapKeyDuringSerialization(propName)
+            } ?: warnIgnoredMapKeyDuringSerialization(logger, propName)
         }
     }
 
@@ -93,3 +94,5 @@ class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<P
     override fun serialize(encoder: Encoder, value: ProxyMap<T>) =
         serializeProxyMap(propsP, encoder, value)
 }
+
+private val logger by lazy { LoggerFactory.getLogger("KProxyMap.Serializer") }

@@ -1,0 +1,6 @@
+<configuration>
+    <appender name="list" class="com.moshy.util.ListAppender" />
+    <root level="trace">
+        <appender-ref ref="list" />
+    </root>
+</configuration>
