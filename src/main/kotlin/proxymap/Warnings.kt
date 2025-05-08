@@ -1,4 +1,4 @@
-package com.moshy
+package com.moshy.proxymap
 
 import org.slf4j.Logger
 import kotlin.reflect.KClass

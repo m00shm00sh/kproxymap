@@ -86,7 +86,7 @@ class BasicDeserializationTests {
      */
     @Test
     fun `use as explicit KSerializer`() {
-        val kSerializer = ProxyMapSerializer(RegularClass.serializer())
+        val kSerializer = PMSerializer(RegularClass.serializer())
         val p1 = PropVal(RegularClass::prop1, "z")
         val json = JsonExpr(p1)
         testDeserialization<RegularClass>(json, MapCheck(p1), specialArgs = SpecialArgs(serializer = kSerializer))

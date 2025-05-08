@@ -1,5 +1,11 @@
 package com.moshy
 
+import com.moshy.proxymap.PROPS_PACK_CACHE
+import com.moshy.proxymap.PropsPack
+import com.moshy.proxymap.SerialType
+import com.moshy.proxymap.getOrPutEntry
+import com.moshy.proxymap.kClass
+import com.moshy.proxymap.warnIgnoredMapKeyDuringSerialization
 import kotlinx.serialization.*
 import kotlinx.serialization.encoding.*
 import org.slf4j.LoggerFactory
@@ -37,7 +43,7 @@ private fun serializeProxyMap(propsP: PropsPack, encoder: Encoder, value: Map<St
                 elementValue == null -> null
                 propsP.recurseAtIndex[serialIndex] ->
                     @Suppress("UNCHECKED_CAST")
-                    ProxyMap<Dummy>(Dummy::class, elementValue as Map<String, Any?>)
+                    (ProxyMap<Dummy>(Dummy::class, elementValue as Map<String, Any?>))
                 else -> elementValue
             }
             encodeSerializableElement(descriptor, serialIndex, propsSerializers[serialIndex], elem)
@@ -75,7 +81,7 @@ private fun deserializeProxyMap(propsP: PropsPack, decoder: Decoder): Map<String
 /**
  * Provides a serializer to encode/decode a Map<String, Any?> as if it were a @Serializable (data) class C.
  */
-class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<ProxyMap<T>> {
+class PMSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<ProxyMap<T>> {
     // use reflection to find the run-time type of T
     // TODO: is this cacheable? Is the KSerializer a usable caching key or do we need something else?
     private val type = classSerializer::class.memberFunctions.single { it.name == "deserialize" }.returnType
@@ -95,4 +101,4 @@ class ProxyMapSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<P
         serializeProxyMap(propsP, encoder, value)
 }
 
-private val logger by lazy { LoggerFactory.getLogger("KProxyMap.Serializer") }
+private val logger by lazy { LoggerFactory.getLogger("ProxyMap.Serializer") }

@@ -1,9 +1,8 @@
-package com.moshy
+package com.moshy.proxymap
 
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+
 internal val KType.kClass: KClass<*>
     get() = when (val t = classifier) {
         is KClass<*> -> t
@@ -13,19 +12,6 @@ internal val KType.kClass: KClass<*>
          */
         else -> throw IllegalStateException("Type $t is not a class")
     }
-
-/**
- * Serializing type consisting of a type and its associated serializer.
- * This is a distinct object so it can be used as a cache key, given the cost of reflection.
- */
-internal data class SerialType(
-    val type: KType,
-    val descriptor: SerialDescriptor,
-    val caseFold: Boolean
-) {
-    constructor(type: KType, caseFold: Boolean = false)
-        : this(type, serializer(type).descriptor, caseFold)
-}
 
 private const val KCLASS_STRING_PREFIX = "class ".length
 internal val KClass<*>.className

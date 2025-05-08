@@ -68,7 +68,7 @@ class BasicSerializationTests {
      */
     @Test
     fun `use as explicit KSerializer`() {
-        val kSerializer = ProxyMapSerializer(RegularClass.serializer())
+        val kSerializer = PMSerializer(RegularClass.serializer())
         val p1 = PropVal(RegularClass::prop1, "z")
         val m1 = p1.toList().toMap()
         val expJson = JsonExpr(p1).toString()
@@ -103,7 +103,7 @@ class BasicSerializationTests {
     @Test
     fun `verify non-serializable elements aren't processed and emit warning`() = withLogCheck(logLines) {
         val kSerializer =
-                ProxyMapSerializer(ClassWithTransientProperty.serializer())
+                PMSerializer(ClassWithTransientProperty.serializer())
         assertTrue(
             kSerializer.serializableMemberPropertyCount == ClassWithTransientProperty.serializableMemberCount
         )

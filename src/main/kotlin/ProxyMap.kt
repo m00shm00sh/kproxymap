@@ -1,5 +1,14 @@
 package com.moshy
 
+import com.moshy.proxymap.PROPS_PACK_CACHE
+import com.moshy.proxymap.PropsPack
+import com.moshy.proxymap.SerialType
+import com.moshy.proxymap.casefoldNameCollision
+import com.moshy.proxymap.checkType
+import com.moshy.proxymap.className
+import com.moshy.proxymap.getOrPutEntry
+import com.moshy.proxymap.kClass
+import com.moshy.proxymap.warnIgnoredMapKeyDuringSerialization
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
@@ -20,16 +29,16 @@ private val PropsPack.serializablePropertyNames: Set<String>
  * 4. [fromLensMap]`<T>(vararg items: Pair<String, Any?>)`
  * 5. [fromLensMap]`<T>(map, kType)`
  * 6. `serializerEngine.decodeFromXxx<ProxyMap<T>>(message)` (e.g. `Json.decodeFromString`)
- * 7. `pm1 - pm2`, where `pm1` and `pm2` are both [ProxyMap]`<T>` (this form is useful for creating lenses)
+ * 7. `pm1 - pm2`, where `pm1` and `pm2` are both [com.moshy.proxymap.ProxyMap]`<T>` (this form is useful for creating lenses)
  *
  * Applying the lensing onto an object is done by calling [applyToObject] and supplying an object to return an
- * updated copy of. This can be done out of the box with [ProxyMap.plus].
- * Creating a lens can be done with existing ProxyMaps by using [ProxyMap.minus]
+ * updated copy of. This can be done out of the box with [com.moshy.proxymap.plus].
+ * Creating a lens can be done with existing ProxyMaps by using [com.moshy.proxymap.ProxyMap.minus]
  *
  * @throws IllegalArgumentException if a generic class is supplied
- * @throws IllegalArgumentException if a data class has a [ProxyMap] member property
+ * @throws IllegalArgumentException if a data class has a [com.moshy.proxymap.ProxyMap] member property
  */
-@Serializable(with = ProxyMapSerializer::class)
+@Serializable(with = PMSerializer::class)
 class ProxyMap<T: Any>
 internal constructor (
     private val kClass: KClass<*>,
@@ -91,7 +100,7 @@ internal constructor (
         }.toMap()
         return reflectionCallBy(copyMethod, argMap)
     }
-    /** Apply the lensing contained in this [ProxyMap] to an object [data] having equal class, recursively. */
+    /** Apply the lensing contained in this [com.moshy.proxymap.ProxyMap] to an object [data] having equal class, recursively. */
     @Suppress("UNCHECKED_CAST")
     fun applyToObject(data: T): T =
         applyToObjectImpl(data) as T
@@ -144,7 +153,7 @@ internal constructor (
         }
         return reflectionCallBy(primaryCtor, argMap)
     }
-    /** Create a new object using the values in this [ProxyMap]. */
+    /** Create a new object using the values in this [com.moshy.proxymap.ProxyMap]. */
     @Suppress("UNCHECKED_CAST")
     fun createObject(): T =
         createObjectImpl() as T
@@ -175,14 +184,14 @@ internal constructor (
                 }
             }.let { ProxyMap(dataType.kClass, it) }
         }
-        /** Create a [ProxyMap] from a given object.
+        /** Create a [com.moshy.proxymap.ProxyMap] from a given object.
          *
          * This can be useful for creating map objects used to query differences.
          */
         inline fun <reified T_: Any> fromDataclass(data: T_) =
             fromDataclass(data, typeOf<T_>())
 
-        /** Create a [ProxyMap] given an update lens represented as a [map] and the applicable type information.
+        /** Create a [com.moshy.proxymap.ProxyMap] given an update lens represented as a [map] and the applicable type information.
          *  The caller is expected to do an unchecked cast from `ProxyMap<*>` to the appropriate proxied type.
          *
          *  Enable case folding with [caseFold] if desired.
@@ -243,12 +252,12 @@ internal constructor (
                 }
             }.let { ProxyMap<Any>(kClass, it) }
         }
-        /** Create a [ProxyMap] given an update lens represented as a [map] and type [T_]. */
+        /** Create a [com.moshy.proxymap.ProxyMap] given an update lens represented as a [map] and type [T_]. */
         @Suppress("UNCHECKED_CAST")
         inline fun <reified T_: Any> fromLensMap(data: Map<String, Any?>, caseFold: Boolean = false)
         : ProxyMap<T_> =
             fromLensMap(data, typeOf<T_>(), caseFold) as ProxyMap<T_>
-        /** Create a [ProxyMap] given an update lens represented as map [items] and type [T_]. */
+        /** Create a [com.moshy.proxymap.ProxyMap] given an update lens represented as map [items] and type [T_]. */
         @Suppress("UNCHECKED_CAST")
         inline fun <reified T_: Any> fromLensMap(vararg items: Pair<String, Any?>, caseFold: Boolean = false)
         : ProxyMap<T_> =
@@ -271,23 +280,6 @@ internal constructor (
         inline operator fun <reified T_: Any> invoke(vararg items: Pair<String, Any?>, caseFold: Boolean = false)
         : ProxyMap<T_> =
             fromLensMap<T_>(*items, caseFold = caseFold)
-
-        private fun checkType(type: KType) {
-            val isGeneric = type.arguments.isNotEmpty()
-            val kClass = type.kClass
-            require(!isGeneric) {
-                "class ${kClass.className} is generic; support is missing"
-            }
-            require(kClass.isData) {
-                "a non-data class ${kClass.className} was supplied"
-            }
-            // TODO: is it worth being able to downgrade this from error to warning?
-            for (prop in kClass.memberProperties) {
-                require(prop.returnType.kClass != ProxyMap::class) {
-                    "property ${prop.name} has disallowed type ProxyMap"
-                }
-            }
-        }
 
         private val logger by lazy { LoggerFactory.getLogger("ProxyMap") }
     }
@@ -327,7 +319,7 @@ internal constructor (
     }
 
     /**
-     * Get difference between two [ProxyMap]s.
+     * Get difference between two [com.moshy.proxymap.ProxyMap]s.
      * Here, "difference" includes not only added values, but changed ones, too, so that the resulting ProxyMap is
      * a lens that transforms the object that this came from into something matching the output.
      *
@@ -374,9 +366,6 @@ internal constructor (
         return result
     }
 }
-
-/** Apply [lens] onto a receiver and return the transformed object. */
-operator fun <T: Any> T.plus(lens: ProxyMap<T>): T = lens.applyToObject(this)
 
 /** Call [f] with [argMap] and propagate any thrown exceptions. */
 private fun reflectionCallBy(f: KFunction<*>, argMap: Map<KParameter, Any?>) =

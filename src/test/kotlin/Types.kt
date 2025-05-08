@@ -1,5 +1,6 @@
 package com.moshy
 
+import com.moshy.ProxyMap
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*

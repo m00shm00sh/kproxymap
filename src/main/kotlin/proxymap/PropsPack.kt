@@ -1,5 +1,6 @@
-package com.moshy
+package com.moshy.proxymap
 
+import com.moshy.PMSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -156,7 +157,7 @@ private fun elementSerializer(
 
     if (isDataclass) {
         // unwrap the nullability then rewrap it if necessary
-        val dataclassDeserializer = ProxyMapSerializer(propActualSerializer.cast())
+        val dataclassDeserializer = PMSerializer(propActualSerializer.cast())
         if (isNullableDataclass)
             return dataclassDeserializer.nullable
         return dataclassDeserializer

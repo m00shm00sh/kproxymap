@@ -1,5 +1,6 @@
 package com.moshy
 
+import com.moshy.ProxyMap
 import com.moshy.util.*
 import com.moshy.util.PropVal.Companion.toMap
 import org.junit.jupiter.api.Assertions.*
