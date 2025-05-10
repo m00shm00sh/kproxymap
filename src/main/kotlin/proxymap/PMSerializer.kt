@@ -69,7 +69,7 @@ private fun deserializeProxyMap(propsP: PropsPack, decoder: Decoder): Map<String
                     CompositeDecoder.DECODE_DONE -> break
                     else -> {
                         val serializer = propsSerializers[index]
-                        val deserialized = decoder.decodeSerializableValue(serializer)
+                            val deserialized = decodeSerializableElement(descriptor, index,serializer)
                         put(propsByIndex[index].name, deserialized)
                     }
                 }
