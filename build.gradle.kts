@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.moshy"
-version = "0.9.0"
+version = "0.10.0"
 
 repositories {
     mavenCentral()
@@ -15,6 +15,7 @@ repositories {
 dependencies {
     implementation(kotlin("reflect"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-properties:1.7.3")
     implementation("org.slf4j:slf4j-api:2.0.17")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.0.20")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

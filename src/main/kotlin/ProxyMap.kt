@@ -6,6 +6,8 @@ import com.moshy.proxymap.SerialType
 import com.moshy.proxymap.casefoldNameCollision
 import com.moshy.proxymap.checkType
 import com.moshy.proxymap.className
+import com.moshy.proxymap.fromPropertyMap
+import com.moshy.proxymap.fromPropertyMap as pmFromPropertyMap
 import com.moshy.proxymap.getOrPutEntry
 import com.moshy.proxymap.kClass
 import com.moshy.proxymap.warnIgnoredMapKeyDuringSerialization
@@ -191,7 +193,7 @@ internal constructor (
         inline fun <reified T_: Any> fromDataclass(data: T_) =
             fromDataclass(data, typeOf<T_>())
 
-        /** Create a [com.moshy.proxymap.ProxyMap] given an update lens represented as a [map] and the applicable type information.
+        /** Create a [com.moshy.ProxyMap] given an update lens represented as a [map] and the applicable type information.
          *  The caller is expected to do an unchecked cast from `ProxyMap<*>` to the appropriate proxied type.
          *
          *  Enable case folding with [caseFold] if desired.
@@ -262,6 +264,9 @@ internal constructor (
         inline fun <reified T_: Any> fromLensMap(vararg items: Pair<String, Any?>, caseFold: Boolean = false)
         : ProxyMap<T_> =
             fromLensMap(mapOf(*items), typeOf<T_>(), caseFold) as ProxyMap<T_>
+
+        inline fun <reified T_: Any> fromProps(m: Map<String, String>, caseFold: Boolean = false): ProxyMap<T_> =
+            m.fromPropertyMap(caseFold)
 
         /** Pseudo-constructor for data class input.
          * @see fromDataclass

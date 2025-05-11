@@ -40,6 +40,19 @@ val lensMap2 = ProxyMap<C2>(myMap, caseFold = true)
 val new = original + lensMap2
 ```
 
+A third possible construction for a ProxyMap is from a property map, where values are deserialized as applicable:
+```
+@Serializable
+data class C3 (val A: A01, val B: List<A02>, ...)
+@Serializable
+data class C4 (val a: C3, ...)
+val myMap = mapOf("a.a" to "abc", "a.b.0" to "def, ...)
+val pm = ProxyMap.fromProps<C4>(myMap, caseFold = true)
+```
+Note that in a property map key, the syntax is as follows:
+```[property1][.property2]...```, or for lists,
+```[property1].[index]```, with sub-properties if necessary for list element construction.
+
 ## Limitations
 1. Reflection is necessary to query the serializable members and create the serialization index mappings.
    This requires the kotlin-reflection library. Caching is used to store the reflective querying but there is still the
