@@ -1,11 +1,6 @@
-package com.moshy
+package com.moshy.proxymap
 
-import com.moshy.proxymap.PROPS_PACK_CACHE
-import com.moshy.proxymap.PropsPack
-import com.moshy.proxymap.SerialType
-import com.moshy.proxymap.getOrPutEntry
-import com.moshy.proxymap.kClass
-import com.moshy.proxymap.warnIgnoredMapKeyDuringSerialization
+import com.moshy.ProxyMap
 import kotlinx.serialization.*
 import kotlinx.serialization.encoding.*
 import org.slf4j.LoggerFactory

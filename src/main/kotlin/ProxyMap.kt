@@ -1,5 +1,6 @@
 package com.moshy
 
+import com.moshy.proxymap.PMSerializer
 import com.moshy.proxymap.PROPS_PACK_CACHE
 import com.moshy.proxymap.PropsPack
 import com.moshy.proxymap.SerialType

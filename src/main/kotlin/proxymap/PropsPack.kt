@@ -1,6 +1,5 @@
 package com.moshy.proxymap
 
-import com.moshy.PMSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
