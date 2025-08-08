@@ -346,6 +346,27 @@ class LensTests {
     }
 
     @Test
+    fun `test PM - element`() {
+        val o1 = RegularClass2("test", 1)
+        val o2 = RegularClass2("test", 2)
+        val o3 = RegularClass2("aa", 1)
+        val pm = ProxyMap.fromDataclass(o2) + ProxyMap.fromLensMap<RegularClass2>("prop1" to "aa")
+        val minus1 = pm - "prop2"
+        assertEquals(o3, minus1.applyToObject(o1))
+    }
+
+    @Test
+    fun `test PM - collection`() {
+        val o1 = RegularClass2("test", 1)
+        val o2 = RegularClass2("test", 2)
+        val o3 = RegularClass2("aa", 1)
+        val pm = ProxyMap.fromDataclass(o2) + ProxyMap.fromLensMap<RegularClass2>("prop1" to "aa")
+        val minus1 = pm - listOf("prop2")
+        assertEquals(o3, minus1.applyToObject(o1))
+    }
+
+
+    @Test
     fun `test cast`() {
         val obj = RegularClass("abc")
         val map = ProxyMap(obj) as ProxyMap<*>

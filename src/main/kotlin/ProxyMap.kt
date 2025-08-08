@@ -350,6 +350,27 @@ internal constructor (
         return ProxyMap(kClass, map)
     }
 
+    /**
+     * Remove key from [com.moshy.proxymap.ProxyMap].
+     *
+     */
+    operator fun minus(other: String): ProxyMap<T> =
+        this - listOf(other)
+
+    /**
+     * Remove keys from [com.moshy.proxymap.ProxyMap].
+     *
+     */
+    operator fun minus(other: Collection<String>): ProxyMap<T> {
+        val map = buildMap {
+            for ((key, value) in map) {
+                if (key !in other)
+                    put(key, value)
+            }
+        }
+        return ProxyMap(kClass, map)
+    }
+
     /** Type checked cast from erased to actual type. */
     @Suppress("UNCHECKED_CAST")
     infix fun <U: Any> castTo(clazz: KClass<U>): ProxyMap<U> =
