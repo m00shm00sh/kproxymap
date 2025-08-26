@@ -1,8 +1,13 @@
 package com.moshy
 
 import com.moshy.util.*
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
+import kotlinx.serialization.modules.*
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 
 class FromPropertyMapTests {
@@ -29,6 +34,29 @@ class FromPropertyMapTests {
             ProxyMap.fromProps<RegularClass2>(m, caseFold = true)
         }.message
         assertTrue(msg?.contains("prop2 collides with casefolded property name PROP2") == true)
+    }
+
+    @Test
+    fun `test contextual`() {
+        val m = mapOf("p1" to "")
+        val module = SerializersModule {
+            contextual(object : KSerializer<C> {
+                override val descriptor: SerialDescriptor =
+                    PrimitiveSerialDescriptor("C", PrimitiveKind.STRING)
+
+                override fun serialize(encoder: Encoder, value: C) {
+                    encoder.encodeString("a")
+                }
+
+                override fun deserialize(decoder: Decoder): C {
+                    decoder.decodeString()
+                    return C()
+                }
+            })
+        }
+        assertDoesNotThrow {
+            ProxyMap.fromProps<HasContextual>(m, module = module)
+        }
     }
 
     @Test

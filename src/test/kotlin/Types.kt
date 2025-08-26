@@ -102,6 +102,13 @@ data class WithOptional(
     val p2: Int
 )
 
+class C
+
+@Serializable
+data class HasContextual(
+    @Contextual val p1: C
+)
+
 @Serializable
 data class Rejectable(
     val `p1 abc`: String, // use one with spaces

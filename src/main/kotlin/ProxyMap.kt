@@ -13,6 +13,8 @@ import com.moshy.proxymap.getOrPutEntry
 import com.moshy.proxymap.kClass
 import com.moshy.proxymap.warnIgnoredMapKeyDuringSerialization
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.EmptySerializersModule
+import kotlinx.serialization.modules.SerializersModule
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.util.SortedMap
@@ -266,8 +268,12 @@ internal constructor (
         : ProxyMap<T_> =
             fromLensMap(mapOf(*items), typeOf<T_>(), caseFold) as ProxyMap<T_>
 
-        inline fun <reified T_: Any> fromProps(m: Map<String, String>, caseFold: Boolean = false): ProxyMap<T_> =
-            m.fromPropertyMap(caseFold)
+        inline fun <reified T_: Any> fromProps(
+            m: Map<String, String>,
+            caseFold: Boolean = false,
+            module: SerializersModule = EmptySerializersModule()
+        ): ProxyMap<T_> =
+            m.fromPropertyMap(caseFold, module)
 
         /** Pseudo-constructor for data class input.
          * @see fromDataclass

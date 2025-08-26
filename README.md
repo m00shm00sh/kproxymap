@@ -57,7 +57,7 @@ Note that in a property map key, the syntax is as follows:
 1. Reflection is necessary to query the serializable members and create the serialization index mappings.
    This requires the kotlin-reflection library. Caching is used to store the reflective querying but there is still the
    cost *of* doing the querying at run-time.
-2. kx-serialization `@Polymorphic` and `@Contextual` untested. The author doesn't see these being useful enough
+2. kx-serialization `@Polymorphic` untested. The author doesn't see these being useful enough
    for lens types to handle issues arising from use of them.
 3. Generics are unsupported. Attempting (de)serialization with them will throw an IllegalArgumentException.
 4. ProxyMap cannot be used as a property of a data class which is itself lensed with a ProxyMap. This is because

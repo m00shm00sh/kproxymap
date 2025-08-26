@@ -4,7 +4,10 @@ package com.moshy.proxymap
 import com.moshy.ProxyMap
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.modules.EmptySerializersModule
+import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.properties.Properties
+import kotlinx.serialization.properties.Properties.Default.serializersModule
 import kotlinx.serialization.serializer
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -14,13 +17,17 @@ import org.slf4j.LoggerFactory
  *
  * Each key has the form `prop1(.propN)`, with lists and `<K,V>` maps having a numerical index.
  */
-inline fun <reified T: Any> Map<String, String>.fromPropertyMap(caseFold: Boolean = false): ProxyMap<T> =
-    fromPropertyMap(typeOf<T>(), PMSerializer(serializer<T>()), caseFold)
+inline fun <reified T: Any> Map<String, String>.fromPropertyMap(
+    caseFold: Boolean = false,
+    module: SerializersModule = EmptySerializersModule(),
+): ProxyMap<T> =
+    fromPropertyMap(typeOf<T>(), PMSerializer(serializer<T>()), caseFold, module)
 
 fun <T: Any> Map<String, String>.fromPropertyMap(
     dataType: KType,
     serializer: KSerializer<ProxyMap<T>>,
-    caseFold: Boolean
+    caseFold: Boolean,
+    module: SerializersModule,
 ): ProxyMap<T> {
     val propsP = PROPS_PACK_CACHE.getOrPutEntry(SerialType(dataType, caseFold))
     val map = buildMap {
@@ -60,9 +67,8 @@ fun <T: Any> Map<String, String>.fromPropertyMap(
             put(key, value)
         }
     }
-    @Suppress("UNCHECKED_CAST")
     @OptIn(ExperimentalSerializationApi::class)
-    return Properties.decodeFromStringMap(serializer, map) as ProxyMap<T>
+    return Properties(module).decodeFromStringMap(serializer, map)
 }
 
 private val logger by lazy { LoggerFactory.getLogger("ProxyMap.casefold") }
