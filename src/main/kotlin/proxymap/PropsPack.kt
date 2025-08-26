@@ -1,6 +1,8 @@
 package com.moshy.proxymap
 
+import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -12,12 +14,14 @@ import kotlinx.serialization.serializer
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.withNullability
+import kotlin.reflect.jvm.isAccessible
 
 @Suppress("UNCHECKED_CAST")
 private fun <T> KSerializer<*>.cast() = this as KSerializer<T>
@@ -43,6 +47,7 @@ internal class PropsPack private constructor(
     companion object {
         fun fromSerialType(sType: SerialType): PropsPack {
             val kClass = sType.type.kClass
+            val kclassChildSerializers = kClass.getClassChildSerializers()
             val isGeneric = sType.type.arguments.isNotEmpty()
             if (isGeneric)
                 throw IllegalArgumentException("class ${sType.type.kClass.className} is generic; support is missing")
@@ -108,7 +113,18 @@ internal class PropsPack private constructor(
                 }
                 nameToIndex[prop.name] = serialIndex
                 recursionNeeded += isDataclass
-                indexToSerializer += elementSerializer(prop, underlyingType, isDataclass, isNullableDataclass).cast()
+
+                val originalSerializer = kclassChildSerializers[sTypeSerialIndex]
+
+                /* @Contextual is not preserved at run-time so we have to use original-serializer reflective dragons
+                 * to get this working.
+                 */
+                indexToSerializer +=
+                    @OptIn(ExperimentalSerializationApi::class)
+                    when (originalSerializer) {
+                        is ContextualSerializer -> originalSerializer
+                        else -> elementSerializer(prop, underlyingType, isDataclass, isNullableDataclass).cast()
+                    }.cast()
                 @OptIn(ExperimentalSerializationApi::class)
                 descriptors += Triple(
                     propSerialName,
@@ -147,21 +163,35 @@ private fun elementSerializer(
     isDataclass: Boolean,
     isNullableDataclass: Boolean
 ): KSerializer<out Any?> {
-    /* @Serializable(with=X) requires X to be a compile-time KClass so use
-     *      ?.objectInstance to unpack a runtime-usable object
+    /* We need to reify the serializer to get rid of generic type arguments;
+     * obviously, this will not work with @Contextual-annotated properties, but we can't detect that here,
+     * as we can have the default serializer be available, which will cause false successes, particularly for
+     * cases like kotlin.time.Duration
      */
-    val propActualSerializer =
+    val reifiedSerializer =
         prop.findAnnotation<Serializable>()?.with?.objectInstance
             ?: serializer(underlyingType)
 
     if (isDataclass) {
         // unwrap the nullability then rewrap it if necessary
-        val dataclassDeserializer = PMSerializer(propActualSerializer.cast())
+        val dataclassDeserializer = PMSerializer(reifiedSerializer.cast())
         if (isNullableDataclass)
             return dataclassDeserializer.nullable
         return dataclassDeserializer
     }
-    return propActualSerializer
+    return reifiedSerializer
+}
+
+@OptIn(InternalSerializationApi::class)
+private fun KClass<*>.getClassChildSerializers(): Array<KSerializer<out Any?>> {
+    val descriptor = this.serializer().descriptor
+    @Suppress("UNCHECKED_CAST")
+    val getChildSerializers = descriptor::class
+        .memberProperties.single { it.name == "childSerializers" }
+        .getter
+        .apply { isAccessible = true }
+        as KProperty1.Getter<SerialDescriptor, Array<KSerializer<*>>>
+    return getChildSerializers.invoke(descriptor)
 }
 
 internal val PROPS_PACK_CACHE = ConcurrentHashMap<SerialType, PropsPack>()
