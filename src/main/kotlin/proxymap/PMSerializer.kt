@@ -90,8 +90,19 @@ class PMSerializer<T: Any>(classSerializer: KSerializer<T>): KSerializer<ProxyMa
     override val descriptor = propsP.descriptor
 
     val serializableMemberPropertyCount = propsP.propsByIndex.size
-    override fun deserialize(decoder: Decoder): ProxyMap<T> =
-        ProxyMap(type.kClass, deserializeProxyMap(propsP, decoder))
+
+    override fun deserialize(decoder: Decoder): ProxyMap<T> {
+        val pmap = deserializeProxyMap(propsP, decoder)
+        VALIDATORS.get(type.kClass)?.let {
+            it.forEach { (k, func) ->
+                if (pmap.containsKey(k)) {
+                    func(pmap[k])
+                }
+            }
+        }
+        return ProxyMap(type.kClass, pmap)
+    }
+
     override fun serialize(encoder: Encoder, value: ProxyMap<T>) =
         serializeProxyMap(propsP, encoder, value)
 }

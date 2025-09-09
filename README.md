@@ -53,6 +53,19 @@ Note that in a property map key, the syntax is as follows:
 ```[property1][.property2]...```, or for lists,
 ```[property1].[index]```, with sub-properties if necessary for list element construction.
 
+Validation of a partial state is possible:
+```
+@Serializable
+data class C4(val a: A) {
+    companion object {
+        init {
+            registerValidator(C4::a to { a: A -> require(...) })
+        }
+    }
+}
+```
+The lambda will get invoked during deserialization and lens building.
+
 ## Limitations
 1. Reflection is necessary to query the serializable members and create the serialization index mappings.
    This requires the kotlin-reflection library. Caching is used to store the reflective querying but there is still the

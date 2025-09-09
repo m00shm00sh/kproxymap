@@ -4,6 +4,7 @@ import com.moshy.proxymap.PMSerializer
 import com.moshy.proxymap.PROPS_PACK_CACHE
 import com.moshy.proxymap.PropsPack
 import com.moshy.proxymap.SerialType
+import com.moshy.proxymap.VALIDATORS
 import com.moshy.proxymap.casefoldNameCollision
 import com.moshy.proxymap.checkType
 import com.moshy.proxymap.className
@@ -204,6 +205,7 @@ internal constructor (
         fun fromLensMap(data: Map<String, Any?>, dataType: KType, caseFold: Boolean = false): ProxyMap<*> {
             checkType(dataType)
             val kClass = dataType.kClass
+            val validator = VALIDATORS.get(kClass)
             val propsP = PROPS_PACK_CACHE.getOrPutEntry(SerialType(dataType, caseFold))
             val serializableNames = propsP.serializablePropertyNames
             return buildMap {
@@ -252,6 +254,9 @@ internal constructor (
                         throw IllegalArgumentException(
                             "key $key: expected class: ${propClass.className}; got class: ${value::class.className}"
                         )
+                    }
+                    validator?.get(key)?.let {
+                        it(value)
                     }
                     this[key] = value
                 }

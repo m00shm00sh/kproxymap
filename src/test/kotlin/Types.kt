@@ -1,6 +1,7 @@
 package com.moshy
 
 import com.moshy.ProxyMap
+import com.moshy.proxymap.registerValidator
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
@@ -117,10 +118,17 @@ data class Rejectable(
 
 @Serializable
 data class ThrowsExceptionInInitializer(
-    val a: Int
+    val a: Int,
+    val b: Int
 ) {
     init {
-        require(a > 0)
+        require(b > 0)
+    }
+
+    companion object {
+        init {
+            registerValidator(ThrowsExceptionInInitializer::a to { a: Int -> require(a > 0) })
+        }
     }
 }
 

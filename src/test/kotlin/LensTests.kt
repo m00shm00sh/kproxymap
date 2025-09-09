@@ -177,6 +177,12 @@ class LensTests {
             ProxyMap.fromLensMap<TestCasefoldReject>()
         }
     }
+    @Test
+    fun `test fromLensMap exception`() {
+        assertThrows<IllegalArgumentException> {
+            ProxyMap.fromLensMap<ThrowsExceptionInInitializer>("a" to -1)
+        }
+    }
 
     @Test
     fun `test pseudo-constructors`() {

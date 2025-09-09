@@ -117,4 +117,12 @@ class BasicDeserializationTests {
         }
     }
 
+    @Test
+    fun `verify validator`() {
+        val p1 = PropVal(ThrowsExceptionInInitializer::a, -1)
+        val json = JsonExpr(p1)
+        assertThrows<IllegalArgumentException> {
+            deserializeToMap<ThrowsExceptionInInitializer>(json)
+        }
+    }
 }
